@@ -264,17 +264,29 @@ def processProgramEffects(samePCFlag, idx, channel, songPreset):
         oldReverb = int(gCurrentReverbList[idx])
         oldMod = int(gCurrentModList[idx])
 
-    delayFlag = int(songPreset.get('delayflag', 0))
+    rawDelayFlag = songPreset.get('delayflag', 0)
+    delayFlag = _toEffectFlag(rawDelayFlag)
     if delayFlag != oldDelay:
+        _debugEffectDecision("Delay", "SEND", idx, channel, samePCFlag, oldDelay, delayFlag, rawDelayFlag, BIASFX_DELAY_TOGGLE_CC)
         sendCCMessage(channel, BIASFX_DELAY_TOGGLE_CC, 127)
+    else:
+        _debugEffectDecision("Delay", "SKIP", idx, channel, samePCFlag, oldDelay, delayFlag, rawDelayFlag, BIASFX_DELAY_TOGGLE_CC)
 
-    reverbFlag = int(songPreset.get('reverbflag', 0))
+    rawReverbFlag = songPreset.get('reverbflag', 0)
+    reverbFlag = _toEffectFlag(rawReverbFlag)
     if reverbFlag != oldReverb:
+        _debugEffectDecision("Reverb", "SEND", idx, channel, samePCFlag, oldReverb, reverbFlag, rawReverbFlag, BIASFX_REVERB_TOGGLE_CC)
         sendCCMessage(channel, BIASFX_REVERB_TOGGLE_CC, 127)
+    else:
+        _debugEffectDecision("Reverb", "SKIP", idx, channel, samePCFlag, oldReverb, reverbFlag, rawReverbFlag, BIASFX_REVERB_TOGGLE_CC)
 
-    modeFlag = int(songPreset.get('modeflag', 0))
+    rawModeFlag = songPreset.get('modeflag', 0)
+    modeFlag = _toEffectFlag(rawModeFlag)
     if modeFlag != oldMod:
+        _debugEffectDecision("Mod", "SEND", idx, channel, samePCFlag, oldMod, modeFlag, rawModeFlag, BIASFX_MOD_TOGGLE_CC)
         sendCCMessage(channel, BIASFX_MOD_TOGGLE_CC, 127)
+    else:
+        _debugEffectDecision("Mod", "SKIP", idx, channel, samePCFlag, oldMod, modeFlag, rawModeFlag, BIASFX_MOD_TOGGLE_CC)
 
     if idx == 0:
         _debug(
@@ -291,9 +303,13 @@ def processProgramBoost(samePCFlag, idx, channel, songPreset):
         return
 
     oldBoost = int(gCurrentBoostList[idx]) if samePCFlag else 0
-    boostFlag = int(songPreset.get('boostflag', 0))
+    rawBoostFlag = songPreset.get('boostflag', 0)
+    boostFlag = _toEffectFlag(rawBoostFlag)
     if boostFlag != oldBoost:
+        _debugEffectDecision("Boost", "SEND", idx, channel, samePCFlag, oldBoost, boostFlag, rawBoostFlag, BIASFX_BOOST_TOGGLE_CC)
         sendCCMessage(channel, BIASFX_BOOST_TOGGLE_CC, 127)
+    else:
+        _debugEffectDecision("Boost", "SKIP", idx, channel, samePCFlag, oldBoost, boostFlag, rawBoostFlag, BIASFX_BOOST_TOGGLE_CC)
 
     gCurrentBoostList[idx] = boostFlag
     updateEffectDisplayStatus()
@@ -356,6 +372,30 @@ def updateEffectDisplayStatus():
 
 def _isBiasFXEffectTarget(channel, idx):
     return (channel, idx) in BIASFX_EFFECT_TARGETS
+
+
+def _toEffectFlag(value):
+    if isinstance(value, bool):
+        return 1 if value else 0
+    if value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return 1 if int(value) != 0 else 0
+
+    normalized = str(value).strip().lower()
+    if normalized in ("1", "true", "yes", "on", "checked"):
+        return 1
+    if normalized in ("", "0", "false", "no", "off", "unchecked"):
+        return 0
+
+    _debug(f">>> Unknown effect flag value {value!r}; treating as OFF")
+    return 0
+
+
+def _debugEffectDecision(effectName, action, idx, channel, samePCFlag, oldFlag, newFlag, rawFlag, cc):
+    _debug(
+        f">>> {effectName} {action}: idx={idx}, channel={channel}, samepc={samePCFlag}, "
+        f"old={oldFlag}, new={newFlag}, raw={rawFlag!r}, cc={cc}")
 
 
 def _resetSystemCommandCounter():

@@ -442,6 +442,61 @@ class SongSelectionTest(unittest.TestCase):
         self.assertEqual(songSelection.gCurrentModList[0], 1)
 
     @patch.object(songSelection, "sendCCMessage")
+    def test_process_program_effects_new_pc_treats_boolean_false_as_off(self, sendCCMock):
+        songSelection.gCurrentDelayList[0] = 1
+        songSelection.gCurrentReverbList[0] = 1
+        songSelection.gCurrentModList[0] = 1
+
+        songSelection.processProgramEffects(
+            False,
+            0,
+            config.DEV1_GUITAR_CHANNEL,
+            {"delayflag": False, "reverbflag": False, "modeflag": False},
+        )
+
+        sendCCMock.assert_not_called()
+        self.assertEqual(songSelection.gCurrentDelayList[0], 0)
+        self.assertEqual(songSelection.gCurrentReverbList[0], 0)
+        self.assertEqual(songSelection.gCurrentModList[0], 0)
+
+    @patch.object(songSelection, "sendCCMessage")
+    def test_process_program_effects_new_pc_treats_string_false_as_off(self, sendCCMock):
+        songSelection.gCurrentDelayList[0] = 1
+
+        songSelection.processProgramEffects(
+            False,
+            0,
+            config.DEV1_GUITAR_CHANNEL,
+            {"delayflag": "false", "reverbflag": "0", "modeflag": "off"},
+        )
+
+        sendCCMock.assert_not_called()
+        self.assertEqual(songSelection.gCurrentDelayList[0], 0)
+        self.assertEqual(songSelection.gCurrentReverbList[0], 0)
+        self.assertEqual(songSelection.gCurrentModList[0], 0)
+
+    @patch.object(songSelection, "sendCCMessage")
+    def test_process_program_effects_new_pc_treats_true_values_as_on(self, sendCCMock):
+        songSelection.processProgramEffects(
+            False,
+            0,
+            config.DEV1_GUITAR_CHANNEL,
+            {"delayflag": True, "reverbflag": "true", "modeflag": "1"},
+        )
+
+        self.assertEqual(
+            sendCCMock.call_args_list,
+            [
+                unittest.mock.call(config.DEV1_GUITAR_CHANNEL, config.BIASFX_DELAY_TOGGLE_CC, 127),
+                unittest.mock.call(config.DEV1_GUITAR_CHANNEL, config.BIASFX_REVERB_TOGGLE_CC, 127),
+                unittest.mock.call(config.DEV1_GUITAR_CHANNEL, config.BIASFX_MOD_TOGGLE_CC, 127),
+            ],
+        )
+        self.assertEqual(songSelection.gCurrentDelayList[0], 1)
+        self.assertEqual(songSelection.gCurrentReverbList[0], 1)
+        self.assertEqual(songSelection.gCurrentModList[0], 1)
+
+    @patch.object(songSelection, "sendCCMessage")
     def test_process_program_effects_same_pc_compares_against_existing_state(self, sendCCMock):
         songSelection.gCurrentDelayList[2] = 1
         songSelection.gCurrentReverbList[2] = 1
@@ -583,6 +638,15 @@ class SongSelectionTest(unittest.TestCase):
 
         sendCCMock.assert_called_once_with(config.DEV1_GUITAR_CHANNEL, config.BIASFX_BOOST_TOGGLE_CC, 127)
         self.assertEqual(songSelection.gCurrentBoostList, [1, 1, 0, 0])
+
+    @patch.object(songSelection, "sendCCMessage")
+    def test_process_program_boost_new_pc_treats_string_false_as_off(self, sendCCMock):
+        songSelection.gCurrentBoostList[:] = [1, 1, 0, 0]
+
+        songSelection.processProgramBoost(False, 0, config.DEV1_GUITAR_CHANNEL, {"boostflag": "false"})
+
+        sendCCMock.assert_not_called()
+        self.assertEqual(songSelection.gCurrentBoostList, [0, 1, 0, 0])
 
     @patch.object(songSelection, "sendCCMessage")
     def test_process_program_boost_resets_new_pc_to_missing_boostflag_without_sending_toggle(self, sendCCMock):
