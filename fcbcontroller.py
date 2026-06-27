@@ -281,6 +281,8 @@ if len(sys.argv) > 1:
     if str(sys.argv[1]).upper() == 'DEBUG':
         myutils.setDebugFlag(True)
 
+midiOutput.setPrintDebug(myutils.printDebug)
+
 # Show the list of available midi devices
 myutils.printDebug(pygame.midi.get_count())
 if myutils.getDebugFlag():
