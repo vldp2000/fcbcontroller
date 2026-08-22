@@ -129,6 +129,42 @@ def selectFirstSong():
         gCurrentProgramIdx = 0
 
 
+def refreshCurrentGigIfChanged(payload):
+    global gSelectedGigId
+    global gGig
+    global gCurrentSong
+    global gCurrentSongIdx
+    global gCurrentSongId
+    global gCurrentProgramIdx
+
+    changedGigId = _extractGigId(payload)
+    if changedGigId != gSelectedGigId:
+        _debug(f"Ignore changed gig {changedGigId}; current gig is {gSelectedGigId}")
+        return
+
+    _debug(f"Reload changed current gig {changedGigId}")
+    newGig = dataController.getGig(changedGigId)
+    if not newGig:
+        _debug(f"Changed gig {changedGigId} could not be loaded")
+        return
+
+    gGig = newGig
+    if gGig.get("shortSongList"):
+        selectFirstSong()
+        return
+
+    controllerSocket.sendGigNotificationMessage(gSelectedGigId)
+    if gCurrentSong:
+        gCurrentSong.clear()
+    gCurrentSongIdx = -1
+    gCurrentSongId = -1
+    gCurrentProgramIdx = -1
+    controllerSocket.sendSongNotificationMessage(-1)
+    if gDisplayData:
+        gDisplayData.setSongName("")
+        gDisplayData.drawScreen()
+
+
 def selectNextSong(step):
     global gCurrentSongIdx
 
@@ -390,6 +426,16 @@ def _toEffectFlag(value):
 
     _debug(f">>> Unknown effect flag value {value!r}; treating as OFF")
     return 0
+
+
+def _extractGigId(payload):
+    if isinstance(payload, dict):
+        payload = payload.get("gigId", payload.get("id", -1))
+
+    try:
+        return int(payload)
+    except (TypeError, ValueError):
+        return -1
 
 
 def _debugEffectDecision(effectName, action, idx, channel, samePCFlag, oldFlag, newFlag, rawFlag, cc):

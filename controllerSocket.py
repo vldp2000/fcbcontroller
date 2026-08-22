@@ -10,6 +10,7 @@ from config import (
     SONG_MESSAGE,
     SYNC_MESSAGE,
     VIEW_EDIT_MODE_MESSAGE,
+    VIEW_GIG_CHANGED_MESSAGE,
     VIEW_PROGRAM_MESSAGE,
     VIEW_SONG_MESSAGE,
 )
@@ -22,20 +23,23 @@ gPrintDebug = None
 gSetCurrentSong = None
 gSetSongProgram = None
 gSetControllerMode = None
+gHandleGigChanged = None
 
 
-def init(displayData, printDebug, setCurrentSong, setSongProgram, setControllerMode):
+def init(displayData, printDebug, setCurrentSong, setSongProgram, setControllerMode, handleGigChanged=None):
     global gDisplayData
     global gPrintDebug
     global gSetCurrentSong
     global gSetSongProgram
     global gSetControllerMode
+    global gHandleGigChanged
 
     gDisplayData = displayData
     gPrintDebug = printDebug
     gSetCurrentSong = setCurrentSong
     gSetSongProgram = setSongProgram
     gSetControllerMode = setControllerMode
+    gHandleGigChanged = handleGigChanged
 
 
 def connectToMessageServer():
@@ -81,6 +85,13 @@ def processProgramMessage(idx):
 def processControllerModeMessage(payload):
     _debug(f"->->  Received message {VIEW_EDIT_MODE_MESSAGE} = {payload}")
     gSetControllerMode(payload)
+
+
+@sio.on(VIEW_GIG_CHANGED_MESSAGE)
+def processGigChangedMessage(payload):
+    _debug(f"{VIEW_GIG_CHANGED_MESSAGE}: {payload}")
+    if gHandleGigChanged:
+        gHandleGigChanged(payload)
 
 
 def sendProgramNotificationMessage(idx):

@@ -114,6 +114,50 @@ class SongSelectionTest(unittest.TestCase):
         selectNextSongMock.assert_called_once_with(1)
         self.assertEqual(songSelection.gCurrentProgramIdx, 0)
 
+    @patch.object(songSelection, "selectFirstSong")
+    @patch.object(songSelection.dataController, "getGig", return_value={"id": 7, "shortSongList": [{"id": 10}]})
+    def test_refresh_current_gig_reloads_matching_gig_and_selects_first_song(self, getGigMock, selectFirstSongMock):
+        songSelection.gSelectedGigId = 7
+        songSelection.gGig = {"id": 7, "shortSongList": [{"id": 99}]}
+
+        songSelection.refreshCurrentGigIfChanged({"gigId": 7})
+
+        getGigMock.assert_called_once_with(7)
+        self.assertEqual(songSelection.gGig, {"id": 7, "shortSongList": [{"id": 10}]})
+        selectFirstSongMock.assert_called_once_with()
+
+    @patch.object(songSelection, "selectFirstSong")
+    @patch.object(songSelection.dataController, "getGig")
+    def test_refresh_current_gig_ignores_other_gigs(self, getGigMock, selectFirstSongMock):
+        songSelection.gSelectedGigId = 7
+
+        songSelection.refreshCurrentGigIfChanged({"gigId": 8})
+
+        getGigMock.assert_not_called()
+        selectFirstSongMock.assert_not_called()
+
+    @patch.object(songSelection.controllerSocket, "sendSongNotificationMessage")
+    @patch.object(songSelection.controllerSocket, "sendGigNotificationMessage")
+    @patch.object(songSelection.dataController, "getGig", return_value={"id": 7, "shortSongList": []})
+    def test_refresh_current_gig_clears_song_when_matching_gig_is_empty(self, _getGigMock, sendGigMock, sendSongMock):
+        songSelection.gSelectedGigId = 7
+        songSelection.gGig = {"id": 7, "shortSongList": [{"id": 10}]}
+        songSelection.gCurrentSong = {"id": 10}
+        songSelection.gCurrentSongIdx = 0
+        songSelection.gCurrentSongId = 10
+        songSelection.gCurrentProgramIdx = 1
+
+        songSelection.refreshCurrentGigIfChanged("7")
+
+        sendGigMock.assert_called_once_with(7)
+        sendSongMock.assert_called_once_with(-1)
+        self.assertEqual(songSelection.gCurrentSong, {})
+        self.assertEqual(songSelection.gCurrentSongIdx, -1)
+        self.assertEqual(songSelection.gCurrentSongId, -1)
+        self.assertEqual(songSelection.gCurrentProgramIdx, -1)
+        self.assertIn(("setSongName", ""), self.display.calls)
+        self.assertIn(("drawScreen",), self.display.calls)
+
     @patch.object(songSelection.controllerSocket, "sendSongNotificationMessage")
     @patch.object(songSelection.controllerSocket, "sendGigNotificationMessage")
     @patch.object(songSelection, "setCurrentSong")

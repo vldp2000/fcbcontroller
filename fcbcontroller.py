@@ -301,6 +301,7 @@ controllerSocket.init(
     songSelection.setCurrentSong,
     songSelection.setSongProgram,
     setControllerMode,
+    songSelection.refreshCurrentGigIfChanged,
 )
 controllerSocket.connectToMessageServer()
 

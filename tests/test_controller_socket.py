@@ -76,12 +76,14 @@ class ControllerSocketTest(unittest.TestCase):
         self.songIds = []
         self.programIndexes = []
         self.modePayloads = []
+        self.changedGigPayloads = []
         controllerSocket.init(
             self.display,
             self.debugMessages.append,
             self.songIds.append,
             self.programIndexes.append,
             self.modePayloads.append,
+            self.changedGigPayloads.append,
         )
 
     def test_connect_to_message_server_uses_configured_url(self):
@@ -137,6 +139,11 @@ class ControllerSocketTest(unittest.TestCase):
         fakeClient.handlers[config.VIEW_EDIT_MODE_MESSAGE]("0")
 
         self.assertEqual(self.modePayloads, ["6", "0"])
+
+    def test_mocked_maintenance_gig_changed_event_calls_registered_callback(self):
+        fakeClient.handlers[config.VIEW_GIG_CHANGED_MESSAGE]({"gigId": 7})
+
+        self.assertEqual(self.changedGigPayloads, [{"gigId": 7}])
 
     def test_notification_messages_emit_expected_socket_events(self):
         controllerSocket.sendProgramNotificationMessage(3)
