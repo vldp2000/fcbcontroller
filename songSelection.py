@@ -138,8 +138,9 @@ def refreshCurrentGigIfChanged(payload):
     global gCurrentProgramIdx
 
     changedGigId = _extractGigId(payload)
-    if changedGigId != gSelectedGigId:
-        _debug(f"Ignore changed gig {changedGigId}; current gig is {gSelectedGigId}")
+    loadedGigId = _extractGigId(gGig)
+    if changedGigId != gSelectedGigId and changedGigId != loadedGigId:
+        _debug(f"Ignore changed gig {changedGigId}; selected gig is {gSelectedGigId}, loaded gig is {loadedGigId}")
         return
 
     _debug(f"Reload changed current gig {changedGigId}")
@@ -149,6 +150,9 @@ def refreshCurrentGigIfChanged(payload):
         return
 
     gGig = newGig
+    gSelectedGigId = changedGigId
+    songCount = len(gGig.get("shortSongList", []))
+    _debug(f"Reloaded gig {changedGigId} with {songCount} songs")
     if gGig.get("shortSongList"):
         selectFirstSong()
         return
