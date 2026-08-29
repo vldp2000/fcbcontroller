@@ -1,4 +1,5 @@
 import time
+import threading
 
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_SSD1306
@@ -29,6 +30,10 @@ g_BoostEffectStatus = 0
 
 g_SongName = ''
 g_ProgramName = ''
+g_TemporaryMessageHeader = ''
+g_TemporaryMessageText = ''
+g_TemporaryMessageUntil = 0
+g_TemporaryMessageTimer = None
 
 # 128x64 display with hardware I2C:
 # disp = Adafruit_SSD1306.SSD1306_128_64(rst=RST)
@@ -98,6 +103,42 @@ def setProgramName(name):
   global g_ProgramName
   g_ProgramName = name
 
+def showGigName(name, seconds=5):
+  showTemporaryMessage('Gig', name, seconds)
+
+def showTemporaryMessage(headerValue, textValue, seconds=5):
+  global g_TemporaryMessageHeader
+  global g_TemporaryMessageText
+  global g_TemporaryMessageUntil
+  global g_TemporaryMessageTimer
+
+  g_TemporaryMessageHeader = headerValue
+  g_TemporaryMessageText = textValue
+  g_TemporaryMessageUntil = time.time() + seconds
+
+  if g_TemporaryMessageTimer:
+    g_TemporaryMessageTimer.cancel()
+
+  drawScreen()
+  g_TemporaryMessageTimer = threading.Timer(seconds, clearTemporaryMessage)
+  g_TemporaryMessageTimer.daemon = True
+  g_TemporaryMessageTimer.start()
+
+def clearTemporaryMessage():
+  global g_TemporaryMessageHeader
+  global g_TemporaryMessageText
+  global g_TemporaryMessageUntil
+  global g_TemporaryMessageTimer
+
+  if time.time() < g_TemporaryMessageUntil:
+    return
+
+  g_TemporaryMessageHeader = ''
+  g_TemporaryMessageText = ''
+  g_TemporaryMessageUntil = 0
+  g_TemporaryMessageTimer = None
+  drawScreen()
+
 def setiPadStatus(status):
   global g_iPadStatus
   g_iPadStatus = status
@@ -137,7 +178,13 @@ def drawScreen():
   global g_ReverbEffectStatus
   global g_ModEffectStatus
   global g_BoostEffectStatus
+  global g_TemporaryMessageHeader
+  global g_TemporaryMessageText
+  global g_TemporaryMessageUntil
 
+  if g_TemporaryMessageUntil > time.time():
+    drawMessage(g_TemporaryMessageHeader, g_TemporaryMessageText)
+    return
 
   ###draw.rectangle((0,0,11,11), outline=255, fill=0)
 

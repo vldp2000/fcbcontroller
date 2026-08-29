@@ -130,6 +130,23 @@ def selectFirstSong():
 
 
 def refreshCurrentGigIfChanged(payload):
+    changedGigId = _extractGigId(payload)
+    loadedGigId = _extractGigId(gGig)
+
+    if _isGigSelectionMessage(payload):
+        _debug(f"Select gig {changedGigId}")
+        _loadGigAndSelectFirstSong(changedGigId)
+        return
+
+    if changedGigId != gSelectedGigId and changedGigId != loadedGigId:
+        _debug(f"Ignore changed gig {changedGigId}; selected gig is {gSelectedGigId}, loaded gig is {loadedGigId}")
+        return
+
+    _debug(f"Reload changed current gig {changedGigId}")
+    _loadGigAndSelectFirstSong(changedGigId)
+
+
+def _loadGigAndSelectFirstSong(gigId):
     global gSelectedGigId
     global gGig
     global gCurrentSong
@@ -137,22 +154,16 @@ def refreshCurrentGigIfChanged(payload):
     global gCurrentSongId
     global gCurrentProgramIdx
 
-    changedGigId = _extractGigId(payload)
-    loadedGigId = _extractGigId(gGig)
-    if changedGigId != gSelectedGigId and changedGigId != loadedGigId:
-        _debug(f"Ignore changed gig {changedGigId}; selected gig is {gSelectedGigId}, loaded gig is {loadedGigId}")
-        return
-
-    _debug(f"Reload changed current gig {changedGigId}")
-    newGig = dataController.getGig(changedGigId)
+    newGig = dataController.getGig(gigId)
     if not newGig:
-        _debug(f"Changed gig {changedGigId} could not be loaded")
+        _debug(f"Gig {gigId} could not be loaded")
         return
 
     gGig = newGig
-    gSelectedGigId = changedGigId
+    gSelectedGigId = gigId
     songCount = len(gGig.get("shortSongList", []))
-    _debug(f"Reloaded gig {changedGigId} with {songCount} songs")
+    _debug(f"Loaded gig {gigId} with {songCount} songs")
+    _showGigName(gGig)
     if gGig.get("shortSongList"):
         selectFirstSong()
         return
@@ -442,6 +453,14 @@ def _extractGigId(payload):
         return -1
 
 
+def _isGigSelectionMessage(payload):
+    if not isinstance(payload, dict):
+        return False
+
+    action = payload.get("action")
+    return action == "select" or payload.get("selectGig") is True
+
+
 def _debugEffectDecision(effectName, action, idx, channel, samePCFlag, oldFlag, newFlag, rawFlag, cc):
     _debug(
         f">>> {effectName} {action}: idx={idx}, channel={channel}, samepc={samePCFlag}, "
@@ -451,6 +470,17 @@ def _debugEffectDecision(effectName, action, idx, channel, samePCFlag, oldFlag, 
 def _resetSystemCommandCounter():
     if gResetSystemCommandCounter:
         gResetSystemCommandCounter()
+
+
+def _showGigName(gig):
+    if not gDisplayData:
+        return
+
+    name = gig.get("name", "") if gig else ""
+    if hasattr(gDisplayData, "showGigName"):
+        gDisplayData.showGigName(name, 5)
+    else:
+        gDisplayData.drawMessage("Gig", name)
 
 
 def _debug(message):

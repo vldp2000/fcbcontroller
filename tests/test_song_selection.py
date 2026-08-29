@@ -54,6 +54,9 @@ class FakeDisplay:
     def setProgramName(self, name):
         self.calls.append(("setProgramName", name))
 
+    def showGigName(self, name, seconds=5):
+        self.calls.append(("showGigName", name, seconds))
+
     def setEffectStatus(self, delayStatus, reverbStatus, modStatus, boostStatus=0):
         self.calls.append(("setEffectStatus", delayStatus, reverbStatus, modStatus, boostStatus))
 
@@ -115,7 +118,7 @@ class SongSelectionTest(unittest.TestCase):
         self.assertEqual(songSelection.gCurrentProgramIdx, 0)
 
     @patch.object(songSelection, "selectFirstSong")
-    @patch.object(songSelection.dataController, "getGig", return_value={"id": 7, "shortSongList": [{"id": 10}]})
+    @patch.object(songSelection.dataController, "getGig", return_value={"id": 7, "name": "Live Gig", "shortSongList": [{"id": 10}]})
     def test_refresh_current_gig_reloads_matching_gig_and_selects_first_song(self, getGigMock, selectFirstSongMock):
         songSelection.gSelectedGigId = 7
         songSelection.gGig = {"id": 7, "shortSongList": [{"id": 99}]}
@@ -123,7 +126,8 @@ class SongSelectionTest(unittest.TestCase):
         songSelection.refreshCurrentGigIfChanged({"gigId": 7})
 
         getGigMock.assert_called_once_with(7)
-        self.assertEqual(songSelection.gGig, {"id": 7, "shortSongList": [{"id": 10}]})
+        self.assertEqual(songSelection.gGig, {"id": 7, "name": "Live Gig", "shortSongList": [{"id": 10}]})
+        self.assertIn(("showGigName", "Live Gig", 5), self.display.calls)
         selectFirstSongMock.assert_called_once_with()
 
     @patch.object(songSelection, "selectFirstSong")
@@ -136,9 +140,23 @@ class SongSelectionTest(unittest.TestCase):
         getGigMock.assert_not_called()
         selectFirstSongMock.assert_not_called()
 
+    @patch.object(songSelection, "selectFirstSong")
+    @patch.object(songSelection.dataController, "getGig", return_value={"id": 8, "name": "Selected Gig", "shortSongList": [{"id": 10}]})
+    def test_refresh_current_gig_selects_other_gig_when_payload_is_selection(self, getGigMock, selectFirstSongMock):
+        songSelection.gSelectedGigId = 7
+        songSelection.gGig = {"id": 7, "name": "Old Gig", "shortSongList": [{"id": 99}]}
+
+        songSelection.refreshCurrentGigIfChanged({"gigId": 8, "action": "select"})
+
+        getGigMock.assert_called_once_with(8)
+        self.assertEqual(songSelection.gSelectedGigId, 8)
+        self.assertEqual(songSelection.gGig, {"id": 8, "name": "Selected Gig", "shortSongList": [{"id": 10}]})
+        self.assertIn(("showGigName", "Selected Gig", 5), self.display.calls)
+        selectFirstSongMock.assert_called_once_with()
+
     @patch.object(songSelection.controllerSocket, "sendSongNotificationMessage")
     @patch.object(songSelection.controllerSocket, "sendGigNotificationMessage")
-    @patch.object(songSelection.dataController, "getGig", return_value={"id": 7, "shortSongList": []})
+    @patch.object(songSelection.dataController, "getGig", return_value={"id": 7, "name": "Empty Gig", "shortSongList": []})
     def test_refresh_current_gig_clears_song_when_matching_gig_is_empty(self, _getGigMock, sendGigMock, sendSongMock):
         songSelection.gSelectedGigId = 7
         songSelection.gGig = {"id": 7, "shortSongList": [{"id": 10}]}
@@ -151,6 +169,7 @@ class SongSelectionTest(unittest.TestCase):
 
         sendGigMock.assert_called_once_with(7)
         sendSongMock.assert_called_once_with(-1)
+        self.assertIn(("showGigName", "Empty Gig", 5), self.display.calls)
         self.assertEqual(songSelection.gCurrentSong, {})
         self.assertEqual(songSelection.gCurrentSongIdx, -1)
         self.assertEqual(songSelection.gCurrentSongId, -1)
