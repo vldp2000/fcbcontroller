@@ -202,7 +202,7 @@ def selectNextSong(step):
     controllerSocket.sendSongNotificationMessage(id)
 
 
-def setCurrentSong(id):
+def setCurrentSong(id, showSplash=False):
     global gCurrentSong
     global gCurrentSongId
 
@@ -211,7 +211,7 @@ def setCurrentSong(id):
             gCurrentSong.clear()
             gCurrentSong = None
 
-        gCurrentSong = dataController.readSongFromJson(id)
+        gCurrentSong = dataController.getSong(id)
 
         if gCurrentSong:
             gCurrentSongId = gCurrentSong["id"]
@@ -219,6 +219,8 @@ def setCurrentSong(id):
             _debug(f"Selected song = {name}")
             gDisplayData.setSongName(f"{gCurrentSongIdx}.{name}")
             setSongProgram(0)
+            if showSplash:
+                _showSongName(gCurrentSong)
         else:
             _debug("Song corrupted")
             gDisplayData.drawError("Song corrupted")
@@ -481,6 +483,17 @@ def _showGigName(gig):
         gDisplayData.showGigName(name, 5)
     else:
         gDisplayData.drawMessage("Gig", name)
+
+
+def _showSongName(song):
+    if not gDisplayData:
+        return
+
+    name = song.get("name", "") if song else ""
+    if hasattr(gDisplayData, "showSongName"):
+        gDisplayData.showSongName(name, 2)
+    else:
+        gDisplayData.drawMessage("Song", name)
 
 
 def _debug(message):

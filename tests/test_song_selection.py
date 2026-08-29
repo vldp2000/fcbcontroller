@@ -57,6 +57,9 @@ class FakeDisplay:
     def showGigName(self, name, seconds=5):
         self.calls.append(("showGigName", name, seconds))
 
+    def showSongName(self, name, seconds=5):
+        self.calls.append(("showSongName", name, seconds))
+
     def setEffectStatus(self, delayStatus, reverbStatus, modStatus, boostStatus=0):
         self.calls.append(("setEffectStatus", delayStatus, reverbStatus, modStatus, boostStatus))
 
@@ -207,7 +210,7 @@ class SongSelectionTest(unittest.TestCase):
         sendSongMock.assert_called_once_with(20)
 
     @patch.object(songSelection, "setSongProgram")
-    @patch.object(songSelection.dataController, "readSongFromJson", return_value={"id": 3, "name": "Song"})
+    @patch.object(songSelection.dataController, "getSong", return_value={"id": 3, "name": "Song"})
     def test_set_current_song_loads_song_and_selects_first_program(self, _readSong, setSongProgramMock):
         songSelection.gCurrentSongIdx = 2
 
@@ -217,17 +220,35 @@ class SongSelectionTest(unittest.TestCase):
         self.assertIn(("setSongName", "2.Song"), self.display.calls)
         setSongProgramMock.assert_called_once_with(0)
 
-    @patch.object(songSelection.dataController, "readSongFromJson", return_value={})
+    @patch.object(songSelection.dataController, "getSong", return_value={})
     def test_set_current_song_reports_corrupt_song(self, _readSong):
         songSelection.setCurrentSong(3)
 
         self.assertIn(("drawError", "Song corrupted"), self.display.calls)
 
-    @patch.object(songSelection.dataController, "readSongFromJson", side_effect=RuntimeError("missing"))
+    @patch.object(songSelection.dataController, "getSong", side_effect=RuntimeError("missing"))
     def test_set_current_song_reports_missing_song(self, _readSong):
         songSelection.setCurrentSong(3)
 
         self.assertIn(("drawError", "Song not found"), self.display.calls)
+
+    @patch.object(songSelection, "setSongProgram")
+    @patch.object(songSelection.dataController, "getSong", return_value={"id": 3, "name": "Reloaded Song"})
+    def test_set_current_song_reloads_even_when_same_song_is_selected(self, getSongMock, _setSongProgramMock):
+        songSelection.gCurrentSongId = 3
+        songSelection.gCurrentSong = {"id": 3, "name": "Old Song"}
+
+        songSelection.setCurrentSong(3)
+
+        getSongMock.assert_called_once_with(3)
+        self.assertEqual(songSelection.gCurrentSong, {"id": 3, "name": "Reloaded Song"})
+
+    @patch.object(songSelection, "setSongProgram")
+    @patch.object(songSelection.dataController, "getSong", return_value={"id": 3, "name": "Vue Song"})
+    def test_set_current_song_shows_song_splash_when_requested(self, _getSongMock, _setSongProgramMock):
+        songSelection.setCurrentSong(3, True)
+
+        self.assertIn(("showSongName", "Vue Song", 2), self.display.calls)
 
     @patch.object(songSelection.controllerSocket, "sendProgramNotificationMessage")
     @patch.object(songSelection, "setPreset")

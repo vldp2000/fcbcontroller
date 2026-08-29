@@ -80,7 +80,7 @@ class ControllerSocketTest(unittest.TestCase):
         controllerSocket.init(
             self.display,
             self.debugMessages.append,
-            self.songIds.append,
+            lambda songId, showSplash=False: self.songIds.append((songId, showSplash)),
             self.programIndexes.append,
             self.modePayloads.append,
             self.changedGigPayloads.append,
@@ -120,14 +120,14 @@ class ControllerSocketTest(unittest.TestCase):
         controllerSocket.processProgramMessage(2)
         controllerSocket.processControllerModeMessage("6")
 
-        self.assertEqual(self.songIds, [42])
+        self.assertEqual(self.songIds, [(42, True)])
         self.assertEqual(self.programIndexes, [2])
         self.assertEqual(self.modePayloads, ["6"])
 
     def test_mocked_maintenance_song_event_selects_song(self):
         fakeClient.handlers[config.VIEW_SONG_MESSAGE](42)
 
-        self.assertEqual(self.songIds, [42])
+        self.assertEqual(self.songIds, [(42, True)])
 
     def test_mocked_maintenance_program_event_selects_program(self):
         fakeClient.handlers[config.VIEW_PROGRAM_MESSAGE](2)

@@ -72,7 +72,7 @@ def disconnect():
 @sio.on(VIEW_SONG_MESSAGE)
 def processSongMessage(id):
     _debug(f"{VIEW_SONG_MESSAGE} ID:  {id}")
-    gSetCurrentSong(id)
+    gSetCurrentSong(id, True)
 
 
 @sio.on(VIEW_PROGRAM_MESSAGE)

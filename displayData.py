@@ -106,6 +106,9 @@ def setProgramName(name):
 def showGigName(name, seconds=5):
   showTemporaryMessage('Gig', name, seconds)
 
+def showSongName(name, seconds=2):
+  showTemporaryMessage('Song', name, seconds)
+
 def showTemporaryMessage(headerValue, textValue, seconds=5):
   global g_TemporaryMessageHeader
   global g_TemporaryMessageText
