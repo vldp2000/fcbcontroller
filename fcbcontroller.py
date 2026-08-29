@@ -91,6 +91,7 @@ def clearScreenDebug():
 
 
 def getActionForReceivedMessage(midiMsg):
+    global gExitFlag
     global gMode
     global gConfigChannel
     global gReloadCounter
@@ -130,8 +131,14 @@ def getActionForReceivedMessage(midiMsg):
 
     if msg0 == FCB_CONTROL_STATUS:
         if msg1 == FCB_SYSTEM_COMMAND_CC:  # FCB1010 bank 8 is programmed to send system actions
-            if msg2 < 5:
-                gMode = 'Live'
+            gMode = 'Live'
+            if msg2 == SYSTEM_COMMAND_PREVIOUS_GIG:
+                clearScreenDebug()
+                songSelection.selectNextGig(-1)
+            elif msg2 == SYSTEM_COMMAND_NEXT_GIG:
+                clearScreenDebug()
+                songSelection.selectNextGig(1)
+            elif msg2 in (SYSTEM_COMMAND_SHUTDOWN, SYSTEM_COMMAND_REBOOT, SYSTEM_COMMAND_RESTART_CONTROLLER):
                 if systemCommands.executeSystemCommand(msg2):
                     gExitFlag = True
             return

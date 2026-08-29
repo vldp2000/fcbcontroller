@@ -15,9 +15,20 @@ Song-program preset slots are fixed:
 
 Expression pedal 1 controls slots 1 and 3. Expression pedal 2 controls slots 2 and 4. BiasFX effect toggles are only processed for slots 1 and 3.
 
+## FCB1010 Bank 8 System Controls
+
+Bank 8 is reserved for controller/system operations:
+
+1. Shutdown Raspberry Pi
+2. Reboot Raspberry Pi
+3. Restart the Python controller service
+6. Select previous gig
+7. Select next gig
+
+Shutdown, reboot, and service restart require two consecutive presses of the same button. Previous/next gig execute immediately, wrap around the gig list, show the selected gig on the display, and select the first song in that gig.
+
 ## Test
 
 ```powershell
 python -m unittest discover -s tests
 ```
-

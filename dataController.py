@@ -40,6 +40,14 @@ def getGig(id):
 
 #----------------------------------------------------------------
 
+def getGigs():
+  URL = API_URL + '/all/gig'
+  response = requests.get(url = URL)
+  data = response.json()
+  return data
+
+#----------------------------------------------------------------
+
 def getPresets():
   URL = API_URL + '/all/preset'
   response = requests.get(url = URL)
@@ -80,5 +88,4 @@ def readSongFromJson(id):
     data = json.load(jsonFile)
     #print(data)
     return data
-
 

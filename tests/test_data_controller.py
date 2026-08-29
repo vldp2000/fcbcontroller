@@ -51,6 +51,7 @@ class DataControllerTest(unittest.TestCase):
     def test_get_collection_endpoints_return_json(self, getMock):
         getMock.return_value = self._mock_response([{"id": 1}])
 
+        self.assertEqual(dataController.getGigs(), [{"id": 1}])
         self.assertEqual(dataController.getPresets(), [{"id": 1}])
         self.assertEqual(dataController.getInstruments(), [{"id": 1}])
         self.assertEqual(dataController.getInstrumentBanks(), [{"id": 1}])
@@ -58,6 +59,7 @@ class DataControllerTest(unittest.TestCase):
         self.assertEqual(
             [call.kwargs["url"] for call in getMock.call_args_list],
             [
+                config.API_URL + "/all/gig",
                 config.API_URL + "/all/preset",
                 config.API_URL + "/all/instrument",
                 config.API_URL + "/all/instrumentbank",

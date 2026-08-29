@@ -53,6 +53,13 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.FCB_PEDAL_8_VALUE, 18)
         self.assertEqual(config.FCB_PEDAL_9_VALUE, 19)
 
+    def test_bank_8_system_command_buttons(self):
+        self.assertEqual(config.SYSTEM_COMMAND_SHUTDOWN, 1)
+        self.assertEqual(config.SYSTEM_COMMAND_REBOOT, 2)
+        self.assertEqual(config.SYSTEM_COMMAND_RESTART_CONTROLLER, 3)
+        self.assertEqual(config.SYSTEM_COMMAND_PREVIOUS_GIG, 6)
+        self.assertEqual(config.SYSTEM_COMMAND_NEXT_GIG, 7)
+
     def test_volume_indexes_match_current_volume_list_shape(self):
         self.assertEqual(config.DEV1_GUITAR_VOLUME_IDX, 0)
         self.assertEqual(config.DEV1_KEYBOARD_VOLUME_IDX, 1)

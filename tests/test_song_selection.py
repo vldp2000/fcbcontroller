@@ -180,6 +180,44 @@ class SongSelectionTest(unittest.TestCase):
         self.assertIn(("setSongName", ""), self.display.calls)
         self.assertIn(("drawScreen",), self.display.calls)
 
+    @patch.object(songSelection, "_loadGigAndSelectFirstSong")
+    @patch.object(songSelection.dataController, "getGigs", return_value=[{"id": 7}, {"id": 8}, {"id": 9}])
+    def test_select_next_gig_wraps_forward(self, getGigsMock, loadGigMock):
+        songSelection.gSelectedGigId = 9
+
+        songSelection.selectNextGig(1)
+
+        getGigsMock.assert_called_once_with()
+        loadGigMock.assert_called_once_with(7)
+        self.assertEqual(self.resetCalls, ["reset"])
+
+    @patch.object(songSelection, "_loadGigAndSelectFirstSong")
+    @patch.object(songSelection.dataController, "getGigs", return_value=[{"id": 7}, {"id": 8}, {"id": 9}])
+    def test_select_next_gig_wraps_backward(self, _getGigsMock, loadGigMock):
+        songSelection.gSelectedGigId = 7
+
+        songSelection.selectNextGig(-1)
+
+        loadGigMock.assert_called_once_with(9)
+
+    @patch.object(songSelection, "_loadGigAndSelectFirstSong")
+    @patch.object(songSelection.dataController, "getGigs", return_value=[{"id": 7}, {"id": 8}, {"id": 9}])
+    def test_select_next_gig_uses_first_gig_when_current_is_unknown(self, _getGigsMock, loadGigMock):
+        songSelection.gSelectedGigId = -1
+        songSelection.gGig = {}
+
+        songSelection.selectNextGig(1)
+
+        loadGigMock.assert_called_once_with(7)
+
+    @patch.object(songSelection, "_loadGigAndSelectFirstSong")
+    @patch.object(songSelection.dataController, "getGigs", return_value=[])
+    def test_select_next_gig_reports_empty_gig_list(self, _getGigsMock, loadGigMock):
+        songSelection.selectNextGig(1)
+
+        loadGigMock.assert_not_called()
+        self.assertIn(("drawError", "No gigs"), self.display.calls)
+
     @patch.object(songSelection.controllerSocket, "sendSongNotificationMessage")
     @patch.object(songSelection.controllerSocket, "sendGigNotificationMessage")
     @patch.object(songSelection, "setCurrentSong")

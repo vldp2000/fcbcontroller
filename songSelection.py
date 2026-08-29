@@ -180,6 +180,43 @@ def _loadGigAndSelectFirstSong(gigId):
         gDisplayData.drawScreen()
 
 
+def selectNextGig(step):
+    _resetSystemCommandCounter()
+
+    try:
+        gigs = dataController.getGigs()
+    except:
+        _debug("Gigs not found")
+        if gDisplayData:
+            gDisplayData.drawError("Gigs not found")
+        return
+
+    if not gigs:
+        _debug("No gigs configured")
+        if gDisplayData:
+            gDisplayData.drawError("No gigs")
+        return
+
+    currentGigId = gSelectedGigId
+    if currentGigId <= 0:
+        currentGigId = _extractGigId(gGig)
+
+    currentIdx = -1
+    for idx, gig in enumerate(gigs):
+        if _extractGigId(gig) == currentGigId:
+            currentIdx = idx
+            break
+
+    if currentIdx < 0:
+        nextIdx = 0 if step > 0 else len(gigs) - 1
+    else:
+        nextIdx = (currentIdx + step + len(gigs)) % len(gigs)
+
+    nextGigId = _extractGigId(gigs[nextIdx])
+    _debug(f"Select gig by pedal. current={currentGigId}, next={nextGigId}, step={step}")
+    _loadGigAndSelectFirstSong(nextGigId)
+
+
 def selectNextSong(step):
     global gCurrentSongIdx
 
