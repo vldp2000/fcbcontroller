@@ -338,6 +338,11 @@ class SongSelectionTest(unittest.TestCase):
         )
         sendPCMock.assert_called_once_with(config.DEV1_GUITAR_CHANNEL, 0)
         scheduleMock.assert_called_once_with(config.DEV1_GUITAR_CHANNEL, 0)
+        self.assertIn(
+            "Preset Selected slot=0 instrument=1 channel=6 presetId=9 "
+            "preset=Mute requestedPC=0 cachedPC=0 action=SENT",
+            self.debugMessages,
+        )
 
     @patch.object(songSelection, "scheduleVolumeReassert")
     @patch.object(songSelection, "sendPCMessage")
@@ -503,6 +508,11 @@ class SongSelectionTest(unittest.TestCase):
                 ("cc", config.DEV1_GUITAR_CHANNEL, config.VOLUME_CC, 0),
                 ("cc", config.DEV1_GUITAR_CHANNEL, config.VOLUME_CC, 75),
             ],
+        )
+        self.assertIn(
+            "Preset Selected slot=0 instrument=1 channel=6 presetId=9 "
+            "preset=Lead requestedPC=12 cachedPC=12 action=SKIPPED",
+            self.debugMessages,
         )
 
     def test_set_preset_same_pc_toggles_only_changed_effects_before_restoring_volume(self):
