@@ -282,6 +282,7 @@ def setSongProgram(idx):
             setPreset(program, songPreset, i)
             i = i + 1
 
+        gDisplayData.drawScreen()
         controllerSocket.sendProgramNotificationMessage(idx)
 
     else:
@@ -333,14 +334,12 @@ def setPreset(program, songPreset, idx):
 
             sendCCMessage(channel, VOLUME_CC, newVolume)
 
-            if preset['refinstrument'] == 1:
-                gDisplayData.setProgramName(
-                    f"{program['name']}.{preset['name']}")
+        if preset['refinstrument'] == 1:
+            gDisplayData.setProgramName(
+                f"{program['name']}.{preset['name']}")
 
-            gCurrentPCList[idx] = newPC
-            gCurrentVolumeList[idx] = newVolume
-            gDisplayData.drawScreen()
-
+        gCurrentPCList[idx] = newPC
+        gCurrentVolumeList[idx] = newVolume
         scheduleVolumeReassert(channel, newVolume)
 
     else:

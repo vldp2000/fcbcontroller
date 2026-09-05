@@ -301,6 +301,7 @@ class SongSelectionTest(unittest.TestCase):
 
         self.assertEqual(songSelection.gCurrentProgramIdx, 0)
         self.assertEqual(setPresetMock.call_count, 2)
+        self.assertEqual(self.display.calls.count(("drawScreen",)), 1)
         sendProgramMock.assert_called_once_with(0)
         self.assertEqual(self.resetCalls, ["reset"])
 
@@ -338,6 +339,10 @@ class SongSelectionTest(unittest.TestCase):
         )
         sendPCMock.assert_called_once_with(config.DEV1_GUITAR_CHANNEL, 0)
         scheduleMock.assert_called_once_with(config.DEV1_GUITAR_CHANNEL, 0)
+        self.assertEqual(songSelection.gCurrentPCList[0], 0)
+        self.assertEqual(songSelection.gCurrentVolumeList[0], 0)
+        self.assertIn(("setProgramName", "A.Mute"), self.display.calls)
+        self.assertNotIn(("drawScreen",), self.display.calls)
         self.assertIn(
             "Preset Selected slot=0 instrument=1 channel=6 presetId=9 "
             "preset=Mute requestedPC=0 cachedPC=0 action=SENT",
@@ -370,7 +375,7 @@ class SongSelectionTest(unittest.TestCase):
         self.assertEqual(songSelection.gCurrentPCList[0], 12)
         self.assertEqual(songSelection.gCurrentVolumeList[0], 127)
         self.assertIn(("setProgramName", "A.Lead"), self.display.calls)
-        self.assertIn(("drawScreen",), self.display.calls)
+        self.assertNotIn(("drawScreen",), self.display.calls)
 
     def test_set_preset_new_pc_applies_effects_while_volume_is_zero(self):
         events = []
