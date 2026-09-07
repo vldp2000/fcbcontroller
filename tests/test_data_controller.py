@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import tempfile
 import types
@@ -78,7 +79,7 @@ class DataControllerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tempDir:
             songFile = Path(tempDir) / "11.json"
             songFile.write_text(json.dumps({"id": 11, "name": "Song"}), encoding="utf-8")
-            with patch.object(dataController, "PATH_TO_SONG_FOLDER", str(Path(tempDir)) + "\\"):
+            with patch.object(dataController, "PATH_TO_SONG_FOLDER", str(Path(tempDir)) + os.sep):
                 self.assertEqual(
                     dataController.readSongFromJson(11),
                     {"id": 11, "name": "Song"},
