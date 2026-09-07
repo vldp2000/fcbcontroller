@@ -22,6 +22,7 @@
 import pygame
 import pygame.midi
 import sys
+import logging
 
 import controllerSocket
 import midiOutput
@@ -277,76 +278,83 @@ def getMidiMsg(midiInput):
 # ----------------------------------------------------------------
 
 
-# Main Module
-pygame.midi.init()
+def findMidiDevice(name, inputDevice, fallback):
+    if name:
+        expected = name.casefold()
+        for deviceId in range(pygame.midi.get_count()):
+            info = pygame.midi.get_device_info(deviceId)
+            deviceName = info[1].decode(errors='replace') if isinstance(info[1], bytes) else str(info[1])
+            supportsDirection = bool(info[2] if inputDevice else info[3])
+            if supportsDirection and expected in deviceName.casefold():
+                return deviceId
+        raise RuntimeError(f"MIDI device not found: {name}")
+    return fallback
 
-displayData.initDisplay()
-displayData.clearScreen()
 
+def main():
+    global gMidiOutput
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+    pygame.midi.init()
+    displayData.initDisplay()
+    displayData.clearScreen()
 
-if len(sys.argv) > 1:
-    if str(sys.argv[1]).upper() == 'DEBUG':
+    if len(sys.argv) > 1 and str(sys.argv[1]).upper() == 'DEBUG':
         myutils.setDebugFlag(True)
 
-midiOutput.setPrintDebug(myutils.printDebug)
+    midiOutput.setPrintDebug(myutils.printDebug)
+    myutils.printDebug(pygame.midi.get_count())
+    if myutils.getDebugFlag():
+        for deviceId in range(pygame.midi.get_count()):
+            myutils.printDebug("Id=%d Device=%s" % (deviceId, pygame.midi.get_device_info(deviceId)))
 
-# Show the list of available midi devices
-myutils.printDebug(pygame.midi.get_count())
-if myutils.getDebugFlag():
-    for id in range(pygame.midi.get_count()):
-        myutils.printDebug("Id=%d Device=%s" % (id, pygame.midi.get_device_info(id)))
+    systemCommands.init(displayData, myutils.printDebug)
+    songSelection.init(displayData, myutils.printDebug, systemCommands.resetSystemCommandCounter)
+    controllerSocket.init(
+        displayData,
+        myutils.printDebug,
+        songSelection.setCurrentSong,
+        songSelection.setSongProgram,
+        setControllerMode,
+        songSelection.refreshCurrentGigIfChanged,
+    )
+    controllerSocket.connectToMessageServer()
 
-systemCommands.init(displayData, myutils.printDebug)
-songSelection.init(
-    displayData,
-    myutils.printDebug,
-    systemCommands.resetSystemCommandCounter,
-)
-controllerSocket.init(
-    displayData,
-    myutils.printDebug,
-    songSelection.setCurrentSong,
-    songSelection.setSongProgram,
-    setControllerMode,
-    songSelection.refreshCurrentGigIfChanged,
-)
-controllerSocket.connectToMessageServer()
+    midiInput = None
+    while True:
+        try:
+            inputId = findMidiDevice(MIDI_INPUT_DEVICE_NAME, True, MIDI_INPUT_DEVICE)
+            outputId = findMidiDevice(MIDI_OUTPUT_DEVICE_NAME, False, MIDI_OUTPUT_DEVICE)
+            midiInput = pygame.midi.Input(inputId)
+            gMidiOutput = pygame.midi.Output(outputId, 0)
+            midiOutput.setMidiOutput(gMidiOutput)
+            gMidiOutput.set_instrument(0)
+            break
+        except Exception:
+            logging.exception("MIDI device not ready")
+            pygame.midi.quit()
+            sleep(1)
+            pygame.midi.init()
 
-# displayData.setMessageAPIStatus(255)
-# displayData.drawScreen()
+    myutils.printDebug("Everything ready now...")
+    songSelection.loadAllData()
+    sleep(MIN_DELAY)
+    songSelection.selectFirstSong()
 
-midiInput = None
-
-while True:
     try:
-        midiInput = pygame.midi.Input(MIDI_INPUT_DEVICE)  # Input MIDI device
-        gMidiOutput = pygame.midi.Output(
-            MIDI_OUTPUT_DEVICE, 0)  # Output MIDI device
-        midiOutput.setMidiOutput(gMidiOutput)
-
+        while not gExitFlag:
+            try:
+                getMidiMsg(midiInput)
+            except Exception:
+                logging.exception("Recovered from controller loop error")
+                displayData.drawError("Controller error")
+                sleep(0.2)
+    finally:
         if midiInput:
-            myutils.printDebug("Input MIDI devices is connected")
-            sleep(0.04)
-
-            if gMidiOutput:
-                gMidiOutput.set_instrument(0)
-                myutils.printDebug("Output MIDI devices is connected")
-                sleep(0.04)
-                break
-    except:
-        myutils.printDebug("MIDI device not ready....")
+            midiInput.close()
+        if gMidiOutput:
+            gMidiOutput.close()
         pygame.midi.quit()
-        sleep(1)
-        pygame.midi.init()
-    sleep(0.5)
 
-myutils.printDebug("Everything ready now...")
-songSelection.loadAllData()
-sleep(MIN_DELAY)
-songSelection.selectFirstSong()
 
-while not gExitFlag:
-    getMidiMsg(midiInput)
-
-del midiInput
-pygame.midi.quit()
+if __name__ == '__main__':
+    main()

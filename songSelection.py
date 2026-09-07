@@ -98,19 +98,19 @@ def loadAllData():
             sleep(1)
 
         gPresetDict = dataHelper.initPresets()
-        if not gInstrumentChannelDict:
+        if not gPresetDict:
             gDisplayData.drawError("Presets not found")
             sleep(1)
 
         gInstrumentBankDict = dataHelper.initInstrumentBanks()
-        if not gInstrumentChannelDict:
+        if not gInstrumentBankDict:
             gDisplayData.drawError("Banks not found")
             sleep(1)
 
         gDisplayData.setDataAPIStatus(255)
         gInitialisationComplete = True
 
-    except:
+    except Exception:
         gDisplayData.setDataAPIStatus(0)
         gDisplayData.drawScreen()
         _debug('<< Exception. loadAllData >>')
@@ -185,7 +185,7 @@ def selectNextGig(step):
 
     try:
         gigs = dataController.getGigs()
-    except:
+    except Exception:
         _debug("Gigs not found")
         if gDisplayData:
             gDisplayData.drawError("Gigs not found")
@@ -221,8 +221,14 @@ def selectNextSong(step):
     global gCurrentSongIdx
 
     _resetSystemCommandCounter()
+    songList = gGig.get("shortSongList", []) if gGig else []
+    if not songList:
+        _debug("No songs configured")
+        if gDisplayData:
+            gDisplayData.drawError("No songs")
+        return False
     if step > 0:
-        if (gCurrentSongIdx + step < len(gGig["shortSongList"])):
+        if (gCurrentSongIdx + step < len(songList)):
             gCurrentSongIdx = gCurrentSongIdx + step
         else:
             gCurrentSongIdx = 0
@@ -230,13 +236,17 @@ def selectNextSong(step):
         if gCurrentSongIdx + step > -1:
             gCurrentSongIdx = gCurrentSongIdx + step
         else:
-            gCurrentSongIdx = len(gGig["shortSongList"]) - 1
+            gCurrentSongIdx = len(songList) - 1
 
     controllerSocket.sendGigNotificationMessage(gSelectedGigId)
-    id = gGig["shortSongList"][gCurrentSongIdx]["id"]
+    id = songList[gCurrentSongIdx].get("id")
+    if id is None:
+        gDisplayData.drawError("Song reference invalid")
+        return False
 
     setCurrentSong(id)
     controllerSocket.sendSongNotificationMessage(id)
+    return True
 
 
 def setCurrentSong(id, showSplash=False):
@@ -262,7 +272,7 @@ def setCurrentSong(id, showSplash=False):
             _debug("Song corrupted")
             gDisplayData.drawError("Song corrupted")
 
-    except:
+    except Exception:
         _debug("Song not found")
         gDisplayData.drawError("Song not found")
 
@@ -271,9 +281,15 @@ def setSongProgram(idx):
     global gCurrentProgramIdx
 
     _resetSystemCommandCounter()
-    gCurrentProgramIdx = idx
+    programList = gCurrentSong.get("programList", []) if gCurrentSong else []
+    if not isinstance(idx, int) or idx < 0 or idx >= len(programList):
+        _debug(f"Program {idx} not found")
+        if gDisplayData:
+            gDisplayData.drawError(f"Program {idx} not found")
+        return False
 
-    program = gCurrentSong["programList"][idx]
+    gCurrentProgramIdx = idx
+    program = programList[idx]
 
     if program:
         _debug(f"Selected program. idx={idx}")
@@ -284,15 +300,17 @@ def setSongProgram(idx):
 
         gDisplayData.drawScreen()
         controllerSocket.sendProgramNotificationMessage(idx)
+        return True
 
     else:
         _debug(f"Program {idx} not found")
         gDisplayData.drawError(f"Program {idx} not found")
+        return False
 
 
 def setPreset(program, songPreset, idx):
     id = songPreset['refpreset']
-    preset = gPresetDict[str(id)]
+    preset = gPresetDict.get(str(id))
 
     if preset:
         channel = int(gInstrumentChannelDict[str(songPreset['refinstrument'])])
@@ -346,6 +364,9 @@ def setPreset(program, songPreset, idx):
         _debug(f"Preset {id} not found")
         gDisplayData.drawError(f"Preset {id} not found")
         sleep(0.2)
+        return False
+
+    return True
 
 
 def processProgramEffects(samePCFlag, idx, channel, songPreset):

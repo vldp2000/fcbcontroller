@@ -1,10 +1,14 @@
 import subprocess
+from time import monotonic
+
+SYSTEM_COMMAND_CONFIRM_SECONDS = 5
 
 
 gDisplayData = None
 gPrintDebug = None
 gSystemCommandCounter = 0
 gSystemCommandCode = -1
+gSystemCommandArmedAt = 0
 
 
 def init(displayData, printDebug):
@@ -17,12 +21,15 @@ def init(displayData, printDebug):
 
 def resetSystemCommandCounter():
     global gSystemCommandCounter
+    global gSystemCommandArmedAt
     gSystemCommandCounter = 0
+    gSystemCommandArmedAt = 0
 
 
 def executeSystemCommand(code):
     global gSystemCommandCounter
     global gSystemCommandCode
+    global gSystemCommandArmedAt
 
     _debug("EXECUTE SYSTEM COMMAND")
     command = ""
@@ -30,8 +37,10 @@ def executeSystemCommand(code):
 
     # Safety confirmation: first matching MIDI message arms the command,
     # second consecutive matching message executes it.
-    if gSystemCommandCode != code and gSystemCommandCounter > 0:
-        gSystemCommandCounter = 0
+    if gSystemCommandCounter > 0 and (
+            gSystemCommandCode != code or
+            monotonic() - gSystemCommandArmedAt > SYSTEM_COMMAND_CONFIRM_SECONDS):
+        resetSystemCommandCounter()
 
     if code == 1:
         displayText = 'SHUTDOWN'
@@ -64,6 +73,7 @@ def executeSystemCommand(code):
     _debug(displayText)
     gSystemCommandCounter = gSystemCommandCounter + 1
     gSystemCommandCode = code
+    gSystemCommandArmedAt = monotonic()
     return False
 
 

@@ -1,5 +1,7 @@
 import time
 import threading
+from functools import lru_cache
+from pathlib import Path
 
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_SSD1306
@@ -34,6 +36,12 @@ g_TemporaryMessageHeader = ''
 g_TemporaryMessageText = ''
 g_TemporaryMessageUntil = 0
 g_TemporaryMessageTimer = None
+FONT_DIR = Path(__file__).resolve().parent / 'font'
+
+
+@lru_cache(maxsize=None)
+def _loadFont(name, size):
+  return ImageFont.truetype(str(FONT_DIR / name), size)
 
 # 128x64 display with hardware I2C:
 # disp = Adafruit_SSD1306.SSD1306_128_64(rst=RST)
@@ -61,12 +69,10 @@ def initDisplay():
     g_DisplayInitialised = True
     print ("Display init complete")
   except Exception as inst:
+    g_DisplayInitialised = False
     print(type(inst))    # the exception instance
     print(inst.args)     # arguments stored in .args
     print(inst)              
-  except:
-    g_DisplayInitialised = False
-    print ("Display init failed")
 
 
 # First define some constants to allow easy resizing of shapes.
@@ -86,6 +92,8 @@ def clearScreen():
   draw = ImageDraw.Draw(image)
   # Draw a black filled box to clear the image.
   draw.rectangle((0,0,width,height), outline=0, fill=0)
+  g_Disp.image(image)
+  g_Disp.display()
 
 def setMessageAPIStatus(status):
   global g_MessageAPIStatus
@@ -201,7 +209,7 @@ def drawScreen():
   statusY1 = 3
   statusY2 = 11
 
-  fontA = ImageFont.truetype('font/fontawesome-webfont.ttf', 14)
+  fontA = _loadFont('fontawesome-webfont.ttf', 14)
 
   #Data API status
   draw.rectangle((0,0,20,14), outline=255, fill=0)
@@ -217,9 +225,9 @@ def drawScreen():
   else:
     draw.text((31,0), chr(62163),  font=fontA, fill=255)
 
-  font2 = ImageFont.truetype('font/RetroGaming.ttf', 14)
-  font1 = ImageFont.truetype('font/Pixelade.ttf', 22)
-  fontEffect = ImageFont.truetype('font/RetroGaming.ttf', 12)
+  font2 = _loadFont('RetroGaming.ttf', 14)
+  font1 = _loadFont('Pixelade.ttf', 22)
+  fontEffect = _loadFont('RetroGaming.ttf', 12)
   #font2 = ImageFont.truetype('font/UAVOSDMono.ttf', 12)
 
   drawEffectStatus(draw, 50, 'D', g_DelayEffectStatus > 0, fontEffect)
@@ -283,8 +291,8 @@ def drawSysCommand(textValue):
   # Get drawing object to draw on image.
   draw = ImageDraw.Draw(image)
   
-  font1 = ImageFont.truetype('font/RetroGaming.ttf', 20)
-  font2 = ImageFont.truetype('font/Montserrat-Regular.ttf', 16)
+  font1 = _loadFont('RetroGaming.ttf', 20)
+  font2 = _loadFont('Montserrat-Regular.ttf', 16)
 
   draw.text((1, 1), 'SYSTEM', font=font1, fill=255)
   draw.text((1, 30), textValue,  font=font2, fill=255)
@@ -301,8 +309,8 @@ def drawError(textValue):
   # Get drawing object to draw on image.
   draw = ImageDraw.Draw(image)
   
-  font1 = ImageFont.truetype('font/RetroGaming.ttf', 20)
-  font2 = ImageFont.truetype('font/Montserrat-Regular.ttf', 16)
+  font1 = _loadFont('RetroGaming.ttf', 20)
+  font2 = _loadFont('Montserrat-Regular.ttf', 16)
 
   draw.text((1, 1), 'ERROR', font=font1, fill=255)
   draw.text((1, 30), textValue,  font=font2, fill=255)
@@ -319,8 +327,8 @@ def drawMessage(headerValue,textValue):
   # Get drawing object to draw on image.
   draw = ImageDraw.Draw(image)
   
-  font1 = ImageFont.truetype('font/RetroGaming.ttf', 16)
-  font2 = ImageFont.truetype('font/Montserrat-Regular.ttf', 16)
+  font1 = _loadFont('RetroGaming.ttf', 16)
+  font2 = _loadFont('Montserrat-Regular.ttf', 16)
 
   draw.text((1, 1), headerValue, font=font1, fill=255)
   draw.text((1, 30), textValue,  font=font2, fill=255)

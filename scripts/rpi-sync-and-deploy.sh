@@ -30,7 +30,7 @@ WEB_ROOT="${WEB_ROOT:-/var/www/html}"
 WEB_OWNER="${WEB_OWNER:-www-data:www-data}"
 RESTART_SERVICES="${RESTART_SERVICES:-0}"
 API_SERVICE="${API_SERVICE:-fcbapi}"
-CONTROLLER_SERVICE="${CONTROLLER_SERVICE:-fcbcontroller}"
+CONTROLLER_SERVICE="${CONTROLLER_SERVICE:-fcb1010}"
 
 log() {
   printf '\n==> %s\n' "$1"

@@ -27,6 +27,20 @@ Bank 8 is reserved for controller/system operations:
 
 Shutdown, reboot, and service restart require two consecutive presses of the same button. Previous/next gig execute immediately, wrap around the gig list, show the selected gig on the display, and select the first song in that gig.
 
+## Install
+
+Create a virtual environment and install the pinned dependencies:
+
+```sh
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+Set `FCB_MIDI_INPUT_NAME` and `FCB_MIDI_OUTPUT_NAME` to stable substrings of
+the device names. The legacy numeric indices remain as a fallback. API and
+Socket.IO endpoints can be overridden with `FCB_API_URL` and
+`FCB_MESSAGE_URL`. An example systemd unit is in `scripts/fcb1010.service`.
+
 ## Test
 
 ```powershell

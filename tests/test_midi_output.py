@@ -74,6 +74,13 @@ class MidiOutputTest(unittest.TestCase):
             [">>> MIDI OUT GENERIC statusBase=3, data1=99, data2=45"],
         )
 
+    def test_send_messages_are_safe_when_output_is_disconnected(self):
+        midiOutput.setMidiOutput(None)
+
+        self.assertFalse(midiOutput.sendCCMessage(1, 7, 64))
+        self.assertFalse(midiOutput.sendPCMessage(1, 12))
+        self.assertFalse(midiOutput.sendGenericMidiCommand(0, 7, 64))
+
     @patch.object(midiOutput, "sleep", return_value=None)
     def test_mute_channel_steps_down_to_zero(self, _sleep):
         midiOutput.muteChannel(config.DEV1_KEYBOARD_CHANNEL, 25, 10)

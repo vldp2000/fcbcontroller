@@ -51,7 +51,7 @@ def connect():
     try:
         _debug('SOCKET connection established')
         gDisplayData.setMessageAPIStatus(255)
-    except:
+    except Exception:
         _debug('SOCKET connection can not be established')
         gDisplayData.setMessageAPIStatus(0)
         gDisplayData.drawScreen()

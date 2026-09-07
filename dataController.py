@@ -6,13 +6,19 @@ import json
 from dataClasses import *
 from config import *
 
+REQUEST_TIMEOUT = (2, 5)
+
+
+def _getJson(url):
+  response = requests.get(url=url, timeout=REQUEST_TIMEOUT)
+  response.raise_for_status()
+  return response.json()
+
 #----------------------------------------------------------------
 
 def getScheduledGigId():
   gigId = -1
-  response = requests.get(API_URL + '/currentgig')
-  #pprint.pprint(response)
-  data = response.json()
+  data = _getJson(API_URL + '/currentgig')
   #pprint.pprint(data)
   if len(data) > 0:
     gigId = data['id']
@@ -26,10 +32,8 @@ def getGig(id):
   #pprint.pprint(URL)
   # PARAMS = {'id':id} 
   # response = requests.get(url = URL, params = PARAMS) 
-  response = requests.get(url = URL) 
-  #pprint.pprint(response)
+  data = _getJson(URL)
   #print('----------------------------------------------------')
-  data = response.json()
   #pprint.pprint(data)
   #print('----------------------------------------------------')
   if len(data) > 0:
@@ -42,40 +46,34 @@ def getGig(id):
 
 def getGigs():
   URL = API_URL + '/all/gig'
-  response = requests.get(url = URL)
-  data = response.json()
-  return data
+  return _getJson(URL)
 
 #----------------------------------------------------------------
 
 def getPresets():
   URL = API_URL + '/all/preset'
-  response = requests.get(url = URL)
-  data = response.json()
+  data = _getJson(URL)
   # pprint.pprint(data)
   return data
 #----------------------------------------------------------------
 
 def getInstruments():
   URL = API_URL + '/all/instrument'
-  response = requests.get(url = URL)
-  data = response.json()
+  data = _getJson(URL)
   # pprint.pprint(data)
   return data
 #----------------------------------------------------------------
 
 def getInstrumentBanks():
   URL = API_URL + '/all/instrumentbank'
-  response = requests.get(url = URL)
-  data = response.json()
+  data = _getJson(URL)
   # pprint.pprint(data)
   return data
 
 #----------------------------------------------------------------
 
 def getSong(id):
-  response = requests.get(API_URL +  '/song/' + str(id))
-  data = response.json()
+  data = _getJson(API_URL +  '/song/' + str(id))
   #for key, value in data.items():
   #  print (key, value)
   #pprint.pprint(data)
@@ -88,4 +86,3 @@ def readSongFromJson(id):
     data = json.load(jsonFile)
     #print(data)
     return data
-

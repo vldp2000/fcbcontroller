@@ -1,0 +1,16 @@
+[Unit]
+Description=FCB1010 MIDI controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/fcbcontroller
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/pi/fcbcontroller/.venv/bin/python /home/pi/fcbcontroller/fcbcontroller.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

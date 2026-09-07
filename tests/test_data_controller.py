@@ -19,6 +19,7 @@ class DataControllerTest(unittest.TestCase):
     def _mock_response(self, data):
         response = Mock()
         response.json.return_value = data
+        response.raise_for_status.return_value = None
         return response
 
     @patch.object(dataController.requests, "get")
@@ -26,7 +27,7 @@ class DataControllerTest(unittest.TestCase):
         getMock.return_value = self._mock_response({"id": 9})
 
         self.assertEqual(dataController.getScheduledGigId(), 9)
-        getMock.assert_called_once_with(config.API_URL + "/currentgig")
+        getMock.assert_called_once_with(url=config.API_URL + "/currentgig", timeout=(2, 5))
 
     @patch.object(dataController.requests, "get")
     def test_get_scheduled_gig_id_returns_negative_one_when_empty(self, getMock):
@@ -39,7 +40,7 @@ class DataControllerTest(unittest.TestCase):
         getMock.return_value = self._mock_response({"id": 3, "name": "Gig"})
 
         self.assertEqual(dataController.getGig(3), {"id": 3, "name": "Gig"})
-        getMock.assert_called_once_with(url=config.API_URL + "/gig/3")
+        getMock.assert_called_once_with(url=config.API_URL + "/gig/3", timeout=(2, 5))
 
     @patch.object(dataController.requests, "get")
     def test_get_gig_returns_empty_dict_when_missing(self, getMock):
@@ -71,7 +72,7 @@ class DataControllerTest(unittest.TestCase):
         getMock.return_value = self._mock_response({"id": 7})
 
         self.assertEqual(dataController.getSong(7), {"id": 7})
-        getMock.assert_called_once_with(config.API_URL + "/song/7")
+        getMock.assert_called_once_with(url=config.API_URL + "/song/7", timeout=(2, 5))
 
     def test_read_song_from_json_uses_configured_folder(self):
         with tempfile.TemporaryDirectory() as tempDir:

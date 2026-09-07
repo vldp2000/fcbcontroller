@@ -26,10 +26,10 @@ class DataClassesTest(unittest.TestCase):
     def test_song_preset_stores_constructor_values(self):
         songPreset = SongPreset(1, 0, 2, 0, 0, 64, 1, 80, 100, 6, 3, 12)
 
-        self.assertEqual(songPreset.getId(), (1,))
-        self.assertEqual(songPreset.volume, (100,))
+        self.assertEqual(songPreset.getId(), 1)
+        self.assertEqual(songPreset.volume, 100)
         self.assertEqual(songPreset.midipc, 12)
-        self.assertEqual(songPreset.boostflag, (0,))
+        self.assertEqual(songPreset.boostflag, 0)
 
     def test_preset_and_instrument_get_id(self):
         preset = Preset(id=7)

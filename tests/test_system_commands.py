@@ -98,6 +98,14 @@ class SystemCommandsTest(unittest.TestCase):
         self.assertEqual(self.display.calls, [])
         popenMock.assert_not_called()
 
+    @patch.object(systemCommands.subprocess, "Popen")
+    @patch.object(systemCommands, "monotonic", side_effect=[10, 16, 16])
+    def test_expired_confirmation_rearms_without_executing(self, _monotonicMock, popenMock):
+        self.assertFalse(systemCommands.executeSystemCommand(1))
+        self.assertFalse(systemCommands.executeSystemCommand(1))
+        popenMock.assert_not_called()
+        self.assertEqual(systemCommands.gSystemCommandCounter, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

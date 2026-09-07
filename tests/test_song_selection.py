@@ -316,6 +316,28 @@ class SongSelectionTest(unittest.TestCase):
         setPresetMock.assert_not_called()
         sendProgramMock.assert_not_called()
 
+    def test_set_song_program_handles_missing_current_song(self):
+        songSelection.gCurrentSong = None
+
+        self.assertFalse(songSelection.setSongProgram(0))
+        self.assertIn(("drawError", "Program 0 not found"), self.display.calls)
+
+    def test_set_preset_handles_missing_reference(self):
+        songSelection.gPresetDict = {}
+
+        self.assertFalse(songSelection.setPreset(
+            {"name": "A"},
+            {"refpreset": 999, "refinstrument": 1, "volume": 64},
+            0,
+        ))
+        self.assertIn(("drawError", "Preset 999 not found"), self.display.calls)
+
+    def test_select_next_song_handles_missing_gig(self):
+        songSelection.gGig = None
+
+        self.assertFalse(songSelection.selectNextSong(1))
+        self.assertIn(("drawError", "No songs"), self.display.calls)
+
     @patch.object(songSelection, "scheduleVolumeReassert")
     @patch.object(songSelection, "sendPCMessage")
     @patch.object(songSelection, "sendCCMessage")
