@@ -82,6 +82,12 @@ def calibratePedalVolume(maxValue, value):
     return result
 
 
+def normalizePedalVolume(maxVolume, pedalVolume):
+    maxVolume = max(0, min(127, int(maxVolume)))
+    pedalVolume = max(0, min(127, int(pedalVolume)))
+    return int(maxVolume * pedalVolume / 127)
+
+
 def scheduleVolumeReassert(channel, volume):
     if not MIDI_PRESET_VOLUME_REASSERT_ENABLED:
         return
@@ -117,17 +123,17 @@ def processPendingVolumeReasserts():
 
 def sendPedalVolumeCC(channel, idx, volume):
     cancelPendingVolumeReassert(channel)
-    maxVol = gCurrentVolumeList[idx]
-    if volume <= maxVol and _outputReady():
-        _debug(
-            f">>> MIDI OUT EXPRESSION VOLUME channel={channel}, idx={idx}, cc={VOLUME_CC}, "
-            f"value={int(volume)}, max={maxVol}")
-        gMidiOutput.write_short(0xb0 + int(channel) - 1, VOLUME_CC, int(volume))
-        sleep(MIDI_EXPRESSION_CC_DELAY)
-    else:
-        _debug(
-            f">>> MIDI OUT EXPRESSION VOLUME SKIP channel={channel}, idx={idx}, cc={VOLUME_CC}, "
-            f"value={int(volume)}, max={maxVol}")
+    maxVol = max(0, min(127, int(gCurrentVolumeList[idx])))
+    normalizedVolume = normalizePedalVolume(maxVol, volume)
+    if not _outputReady():
+        return False
+
+    _debug(
+        f">>> MIDI OUT EXPRESSION VOLUME channel={channel}, idx={idx}, cc={VOLUME_CC}, "
+        f"pedal={int(volume)}, value={normalizedVolume}, max={maxVol}")
+    gMidiOutput.write_short(0xb0 + int(channel) - 1, VOLUME_CC, normalizedVolume)
+    sleep(MIDI_EXPRESSION_CC_DELAY)
+    return True
 
 
 def _debugMidi(messageType, channel, data1, data2=None):

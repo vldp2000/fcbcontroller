@@ -37,6 +37,14 @@ class MidiOutputTest(unittest.TestCase):
         self.assertEqual(midiOutput.calibratePedalVolume(113, 113), 127)
         self.assertEqual(midiOutput.calibratePedalVolume(113, 200), 127)
 
+    def test_normalize_pedal_volume_scales_by_program_maximum(self):
+        self.assertEqual(midiOutput.normalizePedalVolume(100, 75), 59)
+        self.assertEqual(midiOutput.normalizePedalVolume(80, 75), 47)
+        self.assertEqual(midiOutput.normalizePedalVolume(100, 127), 100)
+        self.assertEqual(midiOutput.normalizePedalVolume(80, 127), 80)
+        self.assertEqual(midiOutput.normalizePedalVolume(200, 200), 127)
+        self.assertEqual(midiOutput.normalizePedalVolume(-1, -1), 0)
+
     @patch.object(midiOutput, "sleep", return_value=None)
     def test_send_cc_message_writes_control_change_and_sleeps(self, sleepMock):
         midiOutput.sendCCMessage(config.DEV2_KEYBOARD_CHANNEL, 10, 64)
@@ -119,26 +127,29 @@ class MidiOutputTest(unittest.TestCase):
 
         self.assertEqual(
             self.fakeOutput.messages,
-            [(0xB0 + config.DEV1_GUITAR_CHANNEL - 1, config.VOLUME_CC, 55)],
+            [(0xB0 + config.DEV1_GUITAR_CHANNEL - 1, config.VOLUME_CC, 38)],
         )
         self.assertEqual(
             self.debugMessages,
             [
                 f">>> MIDI OUT EXPRESSION VOLUME channel={config.DEV1_GUITAR_CHANNEL}, "
-                f"idx={config.DEV1_GUITAR_VOLUME_IDX}, cc={config.VOLUME_CC}, value=55, max=90"
+                f"idx={config.DEV1_GUITAR_VOLUME_IDX}, cc={config.VOLUME_CC}, pedal=55, value=38, max=90"
             ],
         )
 
     @patch.object(midiOutput, "sleep", return_value=None)
-    def test_send_pedal_volume_does_not_exceed_current_preset_volume(self, _sleep):
+    def test_send_pedal_volume_scales_full_range_below_current_preset_maximum(self, _sleep):
         midiOutput.sendPedalVolumeCC(config.DEV2_KEYBOARD_CHANNEL, config.DEV2_KEYBOARD_VOLUME_IDX, 61)
 
-        self.assertEqual(self.fakeOutput.messages, [])
+        self.assertEqual(
+            self.fakeOutput.messages,
+            [(0xB0 + config.DEV2_KEYBOARD_CHANNEL - 1, config.VOLUME_CC, 28)],
+        )
         self.assertEqual(
             self.debugMessages,
             [
-                f">>> MIDI OUT EXPRESSION VOLUME SKIP channel={config.DEV2_KEYBOARD_CHANNEL}, "
-                f"idx={config.DEV2_KEYBOARD_VOLUME_IDX}, cc={config.VOLUME_CC}, value=61, max=60"
+                f">>> MIDI OUT EXPRESSION VOLUME channel={config.DEV2_KEYBOARD_CHANNEL}, "
+                f"idx={config.DEV2_KEYBOARD_VOLUME_IDX}, cc={config.VOLUME_CC}, pedal=61, value=28, max=60"
             ],
         )
 
@@ -154,16 +165,29 @@ class MidiOutputTest(unittest.TestCase):
         self.assertNotIn(config.DEV2_GUITAR_CHANNEL, midiOutput.gPendingVolumeReassertDict)
         self.assertEqual(
             self.fakeOutput.messages,
-            [(0xB0 + config.DEV2_GUITAR_CHANNEL - 1, config.VOLUME_CC, 40)],
+            [(0xB0 + config.DEV2_GUITAR_CHANNEL - 1, config.VOLUME_CC, 22)],
         )
         self.assertEqual(
             self.debugMessages,
             [
                 f">>> MIDI OUT CANCEL VOLUME REASSERT channel={config.DEV2_GUITAR_CHANNEL}",
                 f">>> MIDI OUT EXPRESSION VOLUME channel={config.DEV2_GUITAR_CHANNEL}, "
-                f"idx={config.DEV2_GUITAR_VOLUME_IDX}, cc={config.VOLUME_CC}, value=40, max=70",
+                f"idx={config.DEV2_GUITAR_VOLUME_IDX}, cc={config.VOLUME_CC}, pedal=40, value=22, max=70",
             ],
         )
+
+    @patch.object(midiOutput, "sleep", return_value=None)
+    def test_send_pedal_volume_is_safe_when_output_is_disconnected(self, sleepMock):
+        midiOutput.setMidiOutput(None)
+
+        self.assertFalse(midiOutput.sendPedalVolumeCC(
+            config.DEV1_GUITAR_CHANNEL,
+            config.DEV1_GUITAR_VOLUME_IDX,
+            75,
+        ))
+
+        sleepMock.assert_not_called()
+        self.assertEqual(self.debugMessages, ["MIDI output is not connected"])
 
     def test_schedule_volume_reassert_keeps_latest_per_channel(self):
         with patch.object(midiOutput, "monotonic", return_value=10.0):
