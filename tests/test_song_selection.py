@@ -289,8 +289,16 @@ class SongSelectionTest(unittest.TestCase):
         self.assertIn(("showSongName", "Vue Song", 2), self.display.calls)
 
     @patch.object(songSelection.controllerSocket, "sendProgramNotificationMessage")
-    @patch.object(songSelection, "setPreset")
-    def test_set_song_program_sets_each_preset_and_notifies(self, setPresetMock, sendProgramMock):
+    @patch.object(songSelection, "_applyPresetPlans")
+    @patch.object(songSelection, "_preparePresetPlan")
+    def test_set_song_program_prepares_each_preset_and_notifies(
+        self,
+        preparePresetMock,
+        applyPlansMock,
+        sendProgramMock,
+    ):
+        plans = [{"idx": 0}, {"idx": 1}]
+        preparePresetMock.side_effect = plans
         songSelection.gCurrentSong = {
             "programList": [
                 {"name": "A", "presetList": [{"refpreset": 1}, {"refpreset": 2}]},
@@ -300,10 +308,106 @@ class SongSelectionTest(unittest.TestCase):
         songSelection.setSongProgram(0)
 
         self.assertEqual(songSelection.gCurrentProgramIdx, 0)
-        self.assertEqual(setPresetMock.call_count, 2)
+        self.assertEqual(preparePresetMock.call_count, 2)
+        applyPlansMock.assert_called_once_with(plans)
         self.assertEqual(self.display.calls.count(("drawScreen",)), 1)
         sendProgramMock.assert_called_once_with(0)
         self.assertEqual(self.resetCalls, ["reset"])
+
+    @patch.object(songSelection.controllerSocket, "sendProgramNotificationMessage")
+    @patch.object(songSelection, "scheduleVolumeReassert")
+    @patch.object(songSelection, "sendPCMessage")
+    @patch.object(songSelection, "sendCCMessage")
+    def test_set_song_program_orders_mutes_pcs_effects_and_volume_ramp(
+        self,
+        sendCCMock,
+        sendPCMock,
+        scheduleMock,
+        _sendProgramMock,
+    ):
+        events = []
+        sendCCMock.side_effect = lambda channel, cc, value: events.append(("CC", channel, cc, value))
+        sendPCMock.side_effect = lambda channel, pc: events.append(("PC", channel, pc))
+        songSelection.gInstrumentChannelDict = {
+            "1": config.DEV1_GUITAR_CHANNEL,
+            "2": config.DEV2_GUITAR_CHANNEL,
+            "3": config.DEV1_KEYBOARD_CHANNEL,
+            "4": config.DEV2_KEYBOARD_CHANNEL,
+        }
+        songSelection.gPresetDict = {
+            "11": {"name": "iPad Guitar", "midipc": 10, "refinstrument": 1},
+            "12": {"name": "Mac Guitar", "midipc": 20, "refinstrument": 2},
+            "13": {"name": "SampleTank", "midipc": 30, "refinstrument": 3},
+            "14": {"name": "Alchemy Mute", "midipc": 0, "refinstrument": 4},
+        }
+        songSelection.gCurrentPCList[:] = [1, 2, 3, 0]
+        songSelection.gCurrentSong = {
+            "programList": [{
+                "name": "A",
+                "presetList": [
+                    {"refpreset": 11, "refinstrument": 1, "volume": 25,
+                     "delayflag": 1, "reverbflag": 0, "modeflag": 1, "boostflag": 0},
+                    {"refpreset": 12, "refinstrument": 2, "volume": 15,
+                     "delayflag": 1, "reverbflag": 1, "modeflag": 0, "boostflag": 1},
+                    {"refpreset": 13, "refinstrument": 3, "volume": 20},
+                    {"refpreset": 14, "refinstrument": 4, "volume": 99},
+                ],
+            }]
+        }
+
+        self.assertTrue(songSelection.setSongProgram(0))
+
+        self.assertEqual(events, [
+            ("CC", 6, config.VOLUME_CC, 0),
+            ("CC", 4, config.VOLUME_CC, 0),
+            ("CC", 1, config.VOLUME_CC, 0),
+            ("CC", 2, config.VOLUME_CC, 0),
+            ("PC", 6, 10),
+            ("PC", 4, 20),
+            ("PC", 1, 30),
+            ("PC", 2, 0),
+            ("CC", 6, config.BIASFX_DELAY_TOGGLE_CC, 127),
+            ("CC", 4, config.BIASFX_DELAY_TOGGLE_CC, 127),
+            ("CC", 4, config.BIASFX_REVERB_TOGGLE_CC, 127),
+            ("CC", 6, config.BIASFX_MOD_TOGGLE_CC, 127),
+            ("CC", 4, config.BIASFX_BOOST_TOGGLE_CC, 127),
+            ("CC", 2, config.VOLUME_CC, 0),
+            ("CC", 6, config.VOLUME_CC, 10),
+            ("CC", 4, config.VOLUME_CC, 10),
+            ("CC", 1, config.VOLUME_CC, 10),
+            ("CC", 6, config.VOLUME_CC, 20),
+            ("CC", 4, config.VOLUME_CC, 15),
+            ("CC", 1, config.VOLUME_CC, 20),
+            ("CC", 6, config.VOLUME_CC, 25),
+        ])
+        self.assertEqual(songSelection.gCurrentPCList, [10, 20, 30, 0])
+        self.assertEqual(songSelection.gCurrentVolumeList, [25, 15, 20, 0])
+        self.assertEqual(scheduleMock.call_args_list, [
+            unittest.mock.call(6, 25),
+            unittest.mock.call(4, 15),
+            unittest.mock.call(1, 20),
+            unittest.mock.call(2, 0),
+        ])
+
+    @patch.object(songSelection, "scheduleVolumeReassert")
+    @patch.object(songSelection, "sendPCMessage")
+    @patch.object(songSelection, "sendCCMessage")
+    def test_apply_preset_plans_skips_unchanged_nonzero_pc_but_sends_zero_pc(
+        self,
+        _sendCCMock,
+        sendPCMock,
+        _scheduleMock,
+    ):
+        plans = [
+            {"idx": 0, "channel": 6, "newPC": 10, "newVolume": 10,
+             "samePC": True, "sendPC": False, "songPreset": {}},
+            {"idx": 3, "channel": 2, "newPC": 0, "newVolume": 0,
+             "samePC": True, "sendPC": True, "songPreset": {}},
+        ]
+
+        songSelection._applyPresetPlans(plans)
+
+        sendPCMock.assert_called_once_with(2, 0)
 
     @patch.object(songSelection.controllerSocket, "sendProgramNotificationMessage")
     @patch.object(songSelection, "setPreset")

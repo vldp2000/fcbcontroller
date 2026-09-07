@@ -11,6 +11,7 @@ from config import (
     BIASFX_DELAY_TOGGLE_CC,
     BIASFX_MOD_TOGGLE_CC,
     BIASFX_REVERB_TOGGLE_CC,
+    MIDI_PROGRAM_VOLUME_RAMP_STEP,
     VOLUME_CC,
 )
 from midiOutput import scheduleVolumeReassert, sendCCMessage, sendPCMessage
@@ -293,10 +294,13 @@ def setSongProgram(idx):
 
     if program:
         _debug(f"Selected program. idx={idx}")
-        i = 0
-        for songPreset in program['presetList']:
-            setPreset(program, songPreset, i)
-            i = i + 1
+        presetPlans = [
+            plan
+            for i, songPreset in enumerate(program.get('presetList', []))
+            for plan in [_preparePresetPlan(program, songPreset, i)]
+            if plan
+        ]
+        _applyPresetPlans(presetPlans)
 
         gDisplayData.drawScreen()
         controllerSocket.sendProgramNotificationMessage(idx)
@@ -306,6 +310,135 @@ def setSongProgram(idx):
         _debug(f"Program {idx} not found")
         gDisplayData.drawError(f"Program {idx} not found")
         return False
+
+
+def _preparePresetPlan(program, songPreset, idx):
+    presetId = songPreset['refpreset']
+    preset = gPresetDict.get(str(presetId))
+    if not preset:
+        _debug(f"Preset {presetId} not found")
+        gDisplayData.drawError(f"Preset {presetId} not found")
+        sleep(0.2)
+        return None
+
+    instrumentId = songPreset['refinstrument']
+    channel = int(gInstrumentChannelDict[str(instrumentId)])
+    newPC = int(preset['midipc'])
+    oldPC = gCurrentPCList[idx]
+    samePC = newPC == oldPC
+    newVolume = 0 if newPC == 0 else max(0, min(127, int(songPreset['volume'])))
+    sendPC = newPC == 0 or not samePC
+    action = "SENT" if sendPC else "SKIPPED"
+
+    _debug(
+        f"Preset Selected slot={idx} instrument={instrumentId} "
+        f"channel={channel} presetId={presetId} preset={preset['name']} "
+        f"requestedPC={newPC} cachedPC={oldPC} action={action}")
+    if newPC != 0:
+        _debug(f"Preset Volume {newVolume}")
+
+    if preset.get('refinstrument') == 1:
+        gDisplayData.setProgramName(f"{program['name']}.{preset['name']}")
+
+    return {
+        "idx": idx,
+        "channel": channel,
+        "newPC": newPC,
+        "newVolume": newVolume,
+        "samePC": samePC,
+        "sendPC": sendPC,
+        "songPreset": songPreset,
+    }
+
+
+def _applyPresetPlans(presetPlans):
+    # Phase 1: silence every destination before any preset starts loading.
+    for plan in presetPlans:
+        sendCCMessage(plan["channel"], VOLUME_CC, 0)
+
+    # Phase 2: send one PC per destination. sendPCMessage supplies the configured
+    # post-PC settling delay before the next MIDI message is sent.
+    for plan in presetPlans:
+        if plan["sendPC"]:
+            sendPCMessage(plan["channel"], plan["newPC"])
+
+    # Phase 3: interleave each effect CC across the BiasFX destinations.
+    for effectName in (EFFECT_DELAY, EFFECT_REVERB, EFFECT_MOD, EFFECT_BOOST):
+        for plan in presetPlans:
+            _applyProgramEffectPhase(effectName, plan)
+    updateEffectDisplayStatus()
+
+    # Phase 4: raise all active volumes in coordinated rounds.
+    _restoreProgramVolumes(presetPlans)
+
+    for plan in presetPlans:
+        idx = plan["idx"]
+        gCurrentPCList[idx] = plan["newPC"]
+        gCurrentVolumeList[idx] = plan["newVolume"]
+        scheduleVolumeReassert(plan["channel"], plan["newVolume"])
+
+
+def _applyProgramEffectPhase(effectName, plan):
+    idx = plan["idx"]
+    channel = plan["channel"]
+    if plan["newPC"] == 0 or not _isBiasFXEffectTarget(channel, idx):
+        return
+
+    effectList, effectCC = getEffectStateAndCC(effectName)
+    sourceKey = {
+        EFFECT_DELAY: "delayflag",
+        EFFECT_REVERB: "reverbflag",
+        EFFECT_MOD: "modeflag",
+        EFFECT_BOOST: "boostflag",
+    }[effectName]
+    displayName = {
+        EFFECT_DELAY: "Delay",
+        EFFECT_REVERB: "Reverb",
+        EFFECT_MOD: "Mod",
+        EFFECT_BOOST: "Boost",
+    }[effectName]
+    rawFlag = plan["songPreset"].get(sourceKey, 0)
+    newFlag = _toEffectFlag(rawFlag)
+    oldFlag = int(effectList[idx]) if plan["samePC"] else 0
+    action = "SEND" if newFlag != oldFlag else "SKIP"
+
+    _debugEffectDecision(
+        displayName,
+        action,
+        idx,
+        channel,
+        plan["samePC"],
+        oldFlag,
+        newFlag,
+        rawFlag,
+        effectCC,
+    )
+    if newFlag != oldFlag:
+        sendCCMessage(channel, effectCC, 127)
+    effectList[idx] = newFlag
+
+
+def _restoreProgramVolumes(presetPlans):
+    # A zero-volume preset is asserted again after its PC so preset loading
+    # cannot leave it audible.
+    for plan in presetPlans:
+        if plan["newVolume"] == 0:
+            sendCCMessage(plan["channel"], VOLUME_CC, 0)
+
+    activePlans = [plan for plan in presetPlans if plan["newVolume"] > 0]
+    if not activePlans:
+        return
+
+    step = max(1, int(MIDI_PROGRAM_VOLUME_RAMP_STEP))
+    lastVolumeByIndex = {}
+    maxVolume = max(plan["newVolume"] for plan in activePlans)
+    for level in range(step, maxVolume + step, step):
+        for plan in activePlans:
+            volume = min(level, plan["newVolume"])
+            if lastVolumeByIndex.get(plan["idx"]) == volume:
+                continue
+            sendCCMessage(plan["channel"], VOLUME_CC, volume)
+            lastVolumeByIndex[plan["idx"]] = volume
 
 
 def setPreset(program, songPreset, idx):
