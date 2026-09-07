@@ -165,14 +165,14 @@ class MidiOutputTest(unittest.TestCase):
         self.assertNotIn(config.DEV2_GUITAR_CHANNEL, midiOutput.gPendingVolumeReassertDict)
         self.assertEqual(
             self.fakeOutput.messages,
-            [(0xB0 + config.DEV2_GUITAR_CHANNEL - 1, config.VOLUME_CC, 22)],
+            [(0xB0 + config.DEV2_GUITAR_CHANNEL - 1, config.VOLUME_CC, 25)],
         )
         self.assertEqual(
             self.debugMessages,
             [
                 f">>> MIDI OUT CANCEL VOLUME REASSERT channel={config.DEV2_GUITAR_CHANNEL}",
                 f">>> MIDI OUT EXPRESSION VOLUME channel={config.DEV2_GUITAR_CHANNEL}, "
-                f"idx={config.DEV2_GUITAR_VOLUME_IDX}, cc={config.VOLUME_CC}, pedal=40, value=22, max=70",
+                f"idx={config.DEV2_GUITAR_VOLUME_IDX}, cc={config.VOLUME_CC}, pedal=40, value=25, max=80",
             ],
         )
 

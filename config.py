@@ -84,10 +84,10 @@ DEV2_GUITAR_CHANNEL = 4    # BiasFX on MacBook
 DEV2_KEYBOARD_CHANNEL = 2  # Alchemy on MacBook
 
 # Current preset/effect state indexes match the song-program preset order:
-# 1. BiasFX iPad, 2. SampleTank iPad, 3. BiasFX MacBook, 4. Alchemy MacBook.
+# 1. BiasFX iPad, 2. BiasFX MacBook, 3. SampleTank iPad, 4. Alchemy MacBook.
 DEV1_GUITAR_VOLUME_IDX = 0
-DEV1_KEYBOARD_VOLUME_IDX = 1
-DEV2_GUITAR_VOLUME_IDX = 2
+DEV2_GUITAR_VOLUME_IDX = 1
+DEV1_KEYBOARD_VOLUME_IDX = 2
 DEV2_KEYBOARD_VOLUME_IDX = 3
 
 # Live expression-pedal routing. Each tuple is (MIDI channel, preset volume index).

@@ -657,13 +657,14 @@ class SongSelectionTest(unittest.TestCase):
 
     @patch.object(songSelection, "sendCCMessage")
     def test_process_program_effects_same_pc_compares_against_existing_state(self, sendCCMock):
-        songSelection.gCurrentDelayList[2] = 1
-        songSelection.gCurrentReverbList[2] = 1
-        songSelection.gCurrentModList[2] = 0
+        guitarIdx = config.DEV2_GUITAR_VOLUME_IDX
+        songSelection.gCurrentDelayList[guitarIdx] = 1
+        songSelection.gCurrentReverbList[guitarIdx] = 1
+        songSelection.gCurrentModList[guitarIdx] = 0
 
         songSelection.processProgramEffects(
             True,
-            2,
+            guitarIdx,
             config.DEV2_GUITAR_CHANNEL,
             {"delayflag": 1, "reverbflag": 0, "modeflag": 0},
         )
@@ -690,7 +691,7 @@ class SongSelectionTest(unittest.TestCase):
 
     @patch.object(songSelection, "sendCCMessage")
     def test_toggle_live_delay_effect_turns_on_both_biasfx_targets_only(self, sendCCMock):
-        songSelection.gCurrentDelayList[:] = [0, 1, 0, 1]
+        songSelection.gCurrentDelayList[:] = [0, 0, 1, 1]
 
         songSelection.toggleLiveDelayEffect()
 
@@ -707,7 +708,7 @@ class SongSelectionTest(unittest.TestCase):
 
     @patch.object(songSelection, "sendCCMessage")
     def test_toggle_live_reverb_effect_turns_off_both_biasfx_targets_only(self, sendCCMock):
-        songSelection.gCurrentReverbList[:] = [1, 0, 1, 0]
+        songSelection.gCurrentReverbList[:] = [1, 1, 0, 0]
 
         songSelection.toggleLiveReverbEffect()
 
@@ -733,13 +734,13 @@ class SongSelectionTest(unittest.TestCase):
         self.assertIn(("setEffectStatus", 0, 0, 0, 0), self.display.calls)
 
     @patch.object(songSelection, "sendCCMessage")
-    def test_toggle_live_delay_effect_turns_on_dev2_when_dev1_master_is_off(self, sendCCMock):
-        songSelection.gCurrentDelayList[:] = [0, 0, 1, 0]
+    def test_toggle_live_delay_effect_turns_on_dev1_when_dev2_is_already_on(self, sendCCMock):
+        songSelection.gCurrentDelayList[:] = [0, 1, 0, 0]
 
         songSelection.toggleLiveDelayEffect()
 
         sendCCMock.assert_called_once_with(config.DEV1_GUITAR_CHANNEL, config.BIASFX_DELAY_TOGGLE_CC, 127)
-        self.assertEqual(songSelection.gCurrentDelayList, [1, 0, 1, 0])
+        self.assertEqual(songSelection.gCurrentDelayList, [1, 1, 0, 0])
         self.assertIn(("setEffectStatus", 1, 0, 0, 0), self.display.calls)
 
     def test_update_effect_display_status_uses_dev1_master_state(self):
@@ -754,7 +755,7 @@ class SongSelectionTest(unittest.TestCase):
 
     @patch.object(songSelection, "sendCCMessage")
     def test_toggle_live_boost_effect_turns_on_both_biasfx_targets_only(self, sendCCMock):
-        songSelection.gCurrentBoostList[:] = [0, 1, 0, 1]
+        songSelection.gCurrentBoostList[:] = [0, 0, 1, 1]
 
         songSelection.toggleLiveBoostEffect()
 

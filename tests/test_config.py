@@ -62,8 +62,8 @@ class ConfigTest(unittest.TestCase):
 
     def test_volume_indexes_match_current_volume_list_shape(self):
         self.assertEqual(config.DEV1_GUITAR_VOLUME_IDX, 0)
-        self.assertEqual(config.DEV1_KEYBOARD_VOLUME_IDX, 1)
-        self.assertEqual(config.DEV2_GUITAR_VOLUME_IDX, 2)
+        self.assertEqual(config.DEV2_GUITAR_VOLUME_IDX, 1)
+        self.assertEqual(config.DEV1_KEYBOARD_VOLUME_IDX, 2)
         self.assertEqual(config.DEV2_KEYBOARD_VOLUME_IDX, 3)
 
         all_indexes = {
