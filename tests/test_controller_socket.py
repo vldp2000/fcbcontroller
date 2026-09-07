@@ -4,6 +4,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -12,11 +13,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 class FakeSocketClient:
     def __init__(self):
         self.connectedUrl = None
+        self.connectCalls = 0
+        self.connectFailuresRemaining = 0
         self.emitted = []
         self.events = {}
         self.handlers = {}
 
     def connect(self, url):
+        self.connectCalls += 1
+        if self.connectFailuresRemaining:
+            self.connectFailuresRemaining -= 1
+            raise ConnectionError("API not ready")
         self.connectedUrl = url
 
     def emit(self, event, payload):
@@ -70,6 +77,8 @@ class FailOnceDisplay(FakeDisplay):
 class ControllerSocketTest(unittest.TestCase):
     def setUp(self):
         fakeClient.connectedUrl = None
+        fakeClient.connectCalls = 0
+        fakeClient.connectFailuresRemaining = 0
         fakeClient.emitted.clear()
         self.display = FakeDisplay()
         self.debugMessages = []
@@ -87,9 +96,41 @@ class ControllerSocketTest(unittest.TestCase):
         )
 
     def test_connect_to_message_server_uses_configured_url(self):
-        controllerSocket.connectToMessageServer()
+        self.assertTrue(controllerSocket.connectToMessageServer())
 
         self.assertEqual(fakeClient.connectedUrl, config.MESSAGE_URL)
+
+    @patch.object(controllerSocket, "MESSAGE_CONNECT_RETRY_DELAY", 0.25)
+    @patch.object(controllerSocket, "MESSAGE_CONNECT_ATTEMPTS", 3)
+    @patch.object(controllerSocket, "sleep")
+    def test_connect_to_message_server_retries_until_api_is_ready(self, sleepMock):
+        fakeClient.connectFailuresRemaining = 2
+
+        self.assertTrue(controllerSocket.connectToMessageServer())
+
+        self.assertEqual(fakeClient.connectCalls, 3)
+        self.assertEqual(fakeClient.connectedUrl, config.MESSAGE_URL)
+        self.assertEqual(sleepMock.call_args_list, [unittest.mock.call(0.25), unittest.mock.call(0.25)])
+        self.assertEqual(
+            self.display.calls,
+            [
+                ("setMessageAPIStatus", 0),
+                ("drawScreen",),
+                ("setMessageAPIStatus", 0),
+                ("drawScreen",),
+            ],
+        )
+
+    @patch.object(controllerSocket, "MESSAGE_CONNECT_RETRY_DELAY", 0)
+    @patch.object(controllerSocket, "MESSAGE_CONNECT_ATTEMPTS", 2)
+    @patch.object(controllerSocket, "sleep")
+    def test_connect_to_message_server_raises_after_bounded_retries(self, _sleepMock):
+        fakeClient.connectFailuresRemaining = 2
+
+        with self.assertRaises(ConnectionError):
+            controllerSocket.connectToMessageServer()
+
+        self.assertEqual(fakeClient.connectCalls, 2)
 
     def test_socket_connect_sets_message_api_online(self):
         controllerSocket.connect()

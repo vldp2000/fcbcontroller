@@ -1,9 +1,12 @@
 import json
+from time import sleep
 
 import socketio
 
 from config import (
     GIG_MESSAGE,
+    MESSAGE_CONNECT_ATTEMPTS,
+    MESSAGE_CONNECT_RETRY_DELAY,
     MESSAGE_URL,
     PRESETVOLUME_MESSAGE,
     PROGRAM_MESSAGE,
@@ -43,7 +46,19 @@ def init(displayData, printDebug, setCurrentSong, setSongProgram, setControllerM
 
 
 def connectToMessageServer():
-    sio.connect(MESSAGE_URL)
+    attempts = max(1, MESSAGE_CONNECT_ATTEMPTS)
+    for attempt in range(1, attempts + 1):
+        try:
+            sio.connect(MESSAGE_URL)
+            return True
+        except Exception:
+            _debug(f"SOCKET connection attempt {attempt}/{attempts} failed")
+            if gDisplayData:
+                gDisplayData.setMessageAPIStatus(0)
+                gDisplayData.drawScreen()
+            if attempt == attempts:
+                raise
+            sleep(MESSAGE_CONNECT_RETRY_DELAY)
 
 
 @sio.event

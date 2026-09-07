@@ -2,6 +2,8 @@ import os
 
 API_URL = os.getenv('FCB_API_URL', 'http://localhost:8081')
 MESSAGE_URL = os.getenv('FCB_MESSAGE_URL', 'http://localhost:8081')
+MESSAGE_CONNECT_ATTEMPTS = int(os.getenv('FCB_MESSAGE_CONNECT_ATTEMPTS', '10'))
+MESSAGE_CONNECT_RETRY_DELAY = float(os.getenv('FCB_MESSAGE_CONNECT_RETRY_DELAY', '1'))
 
 PATH_TO_SONG_FOLDER = '/home/pi/fcbdata/song/'
 

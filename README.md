@@ -49,7 +49,10 @@ python -m venv .venv
 Set `FCB_MIDI_INPUT_NAME` and `FCB_MIDI_OUTPUT_NAME` to stable substrings of
 the device names. The legacy numeric indices remain as a fallback. API and
 Socket.IO endpoints can be overridden with `FCB_API_URL` and
-`FCB_MESSAGE_URL`. An example systemd unit is in `scripts/fcb1010.service`.
+`FCB_MESSAGE_URL`. Initial Socket.IO connection retries default to ten attempts
+one second apart and can be overridden with `FCB_MESSAGE_CONNECT_ATTEMPTS` and
+`FCB_MESSAGE_CONNECT_RETRY_DELAY`. An example systemd unit is in
+`scripts/fcb1010.service`.
 
 ## Test
 
