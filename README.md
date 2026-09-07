@@ -27,6 +27,16 @@ Bank 8 is reserved for controller/system operations:
 
 Shutdown, reboot, and service restart require two consecutive presses of the same button. Previous/next gig execute immediately, wrap around the gig list, show the selected gig on the display, and select the first song in that gig.
 
+Install the narrow sudo policy required by the three privileged controls:
+
+```sh
+sudo install -o root -g root -m 0440 scripts/fcbcontroller-sudoers /etc/sudoers.d/fcbcontroller
+sudo visudo -cf /etc/sudoers.d/fcbcontroller
+```
+
+The controller uses non-interactive sudo and can only power off, reboot, or
+restart `fcb1010.service`; it cannot execute arbitrary commands as root.
+
 ## Install
 
 Create a virtual environment and install the pinned dependencies:

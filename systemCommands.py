@@ -46,17 +46,17 @@ def executeSystemCommand(code):
         displayText = 'SHUTDOWN'
         if gSystemCommandCounter > 0:
             gDisplayData.drawShutdown()
-        command = "/usr/bin/sudo /home/pi/sys/shutdown.sh"
+        command = "/usr/bin/sudo -n /usr/bin/systemctl poweroff"
     elif code == 2:
         displayText = 'REBOOT'
         if gSystemCommandCounter > 0:
             gDisplayData.drawReboot()
-        command = "/usr/bin/sudo /home/pi/sys/reboot.sh"
+        command = "/usr/bin/sudo -n /usr/bin/systemctl reboot"
     elif code == 3:
         displayText = 'RESTART FCB1010'
         if gSystemCommandCounter > 0:
             gDisplayData.drawReboot()
-        command = "/usr/bin/sudo systemctl restart fcb1010.service"
+        command = "/usr/bin/sudo -n /usr/bin/systemctl restart fcb1010.service"
     else:
         _debug("ExecuteSystemCommand. Unknown command")
         return False

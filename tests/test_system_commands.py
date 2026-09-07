@@ -60,7 +60,7 @@ class SystemCommandsTest(unittest.TestCase):
         self.assertTrue(result)
         self.assertIn(("drawShutdown",), self.display.calls)
         popenMock.assert_called_once_with(
-            ["/usr/bin/sudo", "/home/pi/sys/shutdown.sh"],
+            ["/usr/bin/sudo", "-n", "/usr/bin/systemctl", "poweroff"],
             stdout=systemCommands.subprocess.PIPE,
         )
 
@@ -78,6 +78,19 @@ class SystemCommandsTest(unittest.TestCase):
 
         self.assertEqual(self.display.calls.count(("drawReboot",)), 2)
         self.assertEqual(popenMock.call_count, 2)
+        self.assertEqual(
+            popenMock.call_args_list,
+            [
+                unittest.mock.call(
+                    ["/usr/bin/sudo", "-n", "/usr/bin/systemctl", "reboot"],
+                    stdout=systemCommands.subprocess.PIPE,
+                ),
+                unittest.mock.call(
+                    ["/usr/bin/sudo", "-n", "/usr/bin/systemctl", "restart", "fcb1010.service"],
+                    stdout=systemCommands.subprocess.PIPE,
+                ),
+            ],
+        )
 
     @patch.object(systemCommands.subprocess, "Popen")
     def test_different_command_rearms_instead_of_executing(self, popenMock):
