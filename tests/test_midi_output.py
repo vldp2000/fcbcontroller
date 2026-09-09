@@ -73,6 +73,16 @@ class MidiOutputTest(unittest.TestCase):
         )
         sleepMock.assert_called_once_with(config.MIDI_PC_DELAY)
 
+    @patch.object(midiOutput, "sleep", return_value=None)
+    def test_send_pc_message_can_skip_pacing_after_final_pc(self, sleepMock):
+        midiOutput.sendPCMessage(config.DEV1_GUITAR_CHANNEL, 12, pace=False)
+
+        self.assertEqual(
+            self.fakeOutput.messages,
+            [(0xC0 + config.DEV1_GUITAR_CHANNEL - 1, 12, None)],
+        )
+        sleepMock.assert_not_called()
+
     def test_send_generic_midi_command_writes_control_change_status(self):
         midiOutput.sendGenericMidiCommand(3, 99, 45)
 

@@ -359,12 +359,14 @@ def _applyPresetPlans(presetPlans):
 
     # Phase 2: send one PC per destination with only the short transport pacing
     # delay, then let every destination settle in parallel before sending CCs.
-    sentPC = False
-    for plan in presetPlans:
-        if plan["sendPC"]:
-            sendPCMessage(plan["channel"], plan["newPC"])
-            sentPC = True
-    if sentPC:
+    sentPlans = [plan for plan in presetPlans if plan["sendPC"]]
+    for index, plan in enumerate(sentPlans):
+        sendPCMessage(
+            plan["channel"],
+            plan["newPC"],
+            pace=index < len(sentPlans) - 1,
+        )
+    if sentPlans:
         sleep(MIDI_PROGRAM_PC_SETTLE_DELAY)
 
     # Phase 3: interleave each effect CC across the BiasFX destinations.

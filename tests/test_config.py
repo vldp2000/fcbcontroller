@@ -10,7 +10,7 @@ import config
 
 class ConfigTest(unittest.TestCase):
     def test_program_change_uses_short_pacing_and_one_batch_settle_delay(self):
-        self.assertEqual(config.MIDI_PC_DELAY, 0.020)
+        self.assertEqual(config.MIDI_PC_DELAY, 0.005)
         self.assertEqual(config.MIDI_PROGRAM_PC_SETTLE_DELAY, 0.150)
 
     def test_live_device_channels_match_current_routing(self):

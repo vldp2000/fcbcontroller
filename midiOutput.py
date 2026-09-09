@@ -40,12 +40,13 @@ def sendCCMessage(channel, CC, value):
     return True
 
 
-def sendPCMessage(channel, PC):
+def sendPCMessage(channel, PC, pace=True):
     _debugMidi("PC", channel, PC)
     if not _outputReady():
         return False
     gMidiOutput.write_short(0xc0 + int(channel) - 1, int(PC))
-    sleep(MIDI_PC_DELAY)
+    if pace:
+        sleep(MIDI_PC_DELAY)
     return True
 
 

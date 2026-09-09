@@ -329,7 +329,7 @@ class SongSelectionTest(unittest.TestCase):
     ):
         events = []
         sendCCMock.side_effect = lambda channel, cc, value: events.append(("CC", channel, cc, value))
-        sendPCMock.side_effect = lambda channel, pc: events.append(("PC", channel, pc))
+        sendPCMock.side_effect = lambda channel, pc, pace=True: events.append(("PC", channel, pc, pace))
         sleepMock.side_effect = lambda delay: events.append(("SLEEP", delay))
         songSelection.gInstrumentChannelDict = {
             "1": config.DEV1_GUITAR_CHANNEL,
@@ -365,10 +365,10 @@ class SongSelectionTest(unittest.TestCase):
             ("CC", 4, config.VOLUME_CC, 0),
             ("CC", 1, config.VOLUME_CC, 0),
             ("CC", 2, config.VOLUME_CC, 0),
-            ("PC", 6, 10),
-            ("PC", 4, 20),
-            ("PC", 1, 30),
-            ("PC", 2, 0),
+            ("PC", 6, 10, True),
+            ("PC", 4, 20, True),
+            ("PC", 1, 30, True),
+            ("PC", 2, 0, False),
             ("SLEEP", config.MIDI_PROGRAM_PC_SETTLE_DELAY),
             ("CC", 6, config.BIASFX_DELAY_TOGGLE_CC, 127),
             ("CC", 4, config.BIASFX_DELAY_TOGGLE_CC, 127),
@@ -413,7 +413,7 @@ class SongSelectionTest(unittest.TestCase):
 
         songSelection._applyPresetPlans(plans)
 
-        sendPCMock.assert_called_once_with(2, 0)
+        sendPCMock.assert_called_once_with(2, 0, pace=False)
         sleepMock.assert_called_once_with(config.MIDI_PROGRAM_PC_SETTLE_DELAY)
 
     @patch.object(songSelection.controllerSocket, "sendProgramNotificationMessage")
