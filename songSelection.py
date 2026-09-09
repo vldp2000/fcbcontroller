@@ -11,6 +11,7 @@ from config import (
     BIASFX_DELAY_TOGGLE_CC,
     BIASFX_MOD_TOGGLE_CC,
     BIASFX_REVERB_TOGGLE_CC,
+    MIDI_PROGRAM_PC_SETTLE_DELAY,
     MIDI_PROGRAM_VOLUME_RAMP_STEP,
     VOLUME_CC,
 )
@@ -356,11 +357,15 @@ def _applyPresetPlans(presetPlans):
     for plan in presetPlans:
         sendCCMessage(plan["channel"], VOLUME_CC, 0)
 
-    # Phase 2: send one PC per destination. sendPCMessage supplies the configured
-    # post-PC settling delay before the next MIDI message is sent.
+    # Phase 2: send one PC per destination with only the short transport pacing
+    # delay, then let every destination settle in parallel before sending CCs.
+    sentPC = False
     for plan in presetPlans:
         if plan["sendPC"]:
             sendPCMessage(plan["channel"], plan["newPC"])
+            sentPC = True
+    if sentPC:
+        sleep(MIDI_PROGRAM_PC_SETTLE_DELAY)
 
     # Phase 3: interleave each effect CC across the BiasFX destinations.
     for effectName in (EFFECT_DELAY, EFFECT_REVERB, EFFECT_MOD, EFFECT_BOOST):

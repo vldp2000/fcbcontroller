@@ -4,6 +4,8 @@ Python MIDI controller for the VGMates FCB1010/Raspberry Pi live rig.
 
 The controller receives direct MIDI from the Behringer FCB1010, sends Program Change and Control Change messages to the live devices, updates the OLED display, and exchanges live state notifications with the API.
 
+For song-program changes, the controller sends all required Program Change messages with 20 ms transport pacing, waits once for 150 ms while all instruments settle in parallel, then applies effects and restores volume in coordinated per-instrument rounds. A later 150 ms volume reassert protects against apps that overwrite volume while loading a preset.
+
 ## Live Device Order
 
 Song-program preset slots are fixed:

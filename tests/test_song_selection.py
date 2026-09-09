@@ -316,18 +316,21 @@ class SongSelectionTest(unittest.TestCase):
 
     @patch.object(songSelection.controllerSocket, "sendProgramNotificationMessage")
     @patch.object(songSelection, "scheduleVolumeReassert")
+    @patch.object(songSelection, "sleep")
     @patch.object(songSelection, "sendPCMessage")
     @patch.object(songSelection, "sendCCMessage")
     def test_set_song_program_orders_mutes_pcs_effects_and_volume_ramp(
         self,
         sendCCMock,
         sendPCMock,
+        sleepMock,
         scheduleMock,
         _sendProgramMock,
     ):
         events = []
         sendCCMock.side_effect = lambda channel, cc, value: events.append(("CC", channel, cc, value))
         sendPCMock.side_effect = lambda channel, pc: events.append(("PC", channel, pc))
+        sleepMock.side_effect = lambda delay: events.append(("SLEEP", delay))
         songSelection.gInstrumentChannelDict = {
             "1": config.DEV1_GUITAR_CHANNEL,
             "2": config.DEV2_GUITAR_CHANNEL,
@@ -366,6 +369,7 @@ class SongSelectionTest(unittest.TestCase):
             ("PC", 4, 20),
             ("PC", 1, 30),
             ("PC", 2, 0),
+            ("SLEEP", config.MIDI_PROGRAM_PC_SETTLE_DELAY),
             ("CC", 6, config.BIASFX_DELAY_TOGGLE_CC, 127),
             ("CC", 4, config.BIASFX_DELAY_TOGGLE_CC, 127),
             ("CC", 4, config.BIASFX_REVERB_TOGGLE_CC, 127),
@@ -390,12 +394,14 @@ class SongSelectionTest(unittest.TestCase):
         ])
 
     @patch.object(songSelection, "scheduleVolumeReassert")
+    @patch.object(songSelection, "sleep")
     @patch.object(songSelection, "sendPCMessage")
     @patch.object(songSelection, "sendCCMessage")
     def test_apply_preset_plans_skips_unchanged_nonzero_pc_but_sends_zero_pc(
         self,
         _sendCCMock,
         sendPCMock,
+        sleepMock,
         _scheduleMock,
     ):
         plans = [
@@ -408,6 +414,7 @@ class SongSelectionTest(unittest.TestCase):
         songSelection._applyPresetPlans(plans)
 
         sendPCMock.assert_called_once_with(2, 0)
+        sleepMock.assert_called_once_with(config.MIDI_PROGRAM_PC_SETTLE_DELAY)
 
     @patch.object(songSelection.controllerSocket, "sendProgramNotificationMessage")
     @patch.object(songSelection, "setPreset")
