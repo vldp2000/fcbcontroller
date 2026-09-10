@@ -13,6 +13,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.MIDI_CC_DELAY, 0.002)
         self.assertEqual(config.MIDI_PC_DELAY, 0.005)
         self.assertEqual(config.MIDI_PROGRAM_PC_SETTLE_DELAY, 0.100)
+        self.assertEqual(config.MIDI_BIASFX_MAC_PC_SETTLE_DELAY, 0.250)
 
     def test_live_device_channels_match_current_routing(self):
         self.assertEqual(config.DEV1_GUITAR_CHANNEL, 6)
