@@ -11,6 +11,8 @@ from config import (
     BIASFX_DELAY_TOGGLE_CC,
     BIASFX_MOD_TOGGLE_CC,
     BIASFX_REVERB_TOGGLE_CC,
+    DEV2_GUITAR_CHANNEL,
+    MIDI_BIASFX_MAC_PC_SETTLE_DELAY,
     MIDI_PROGRAM_PC_SETTLE_DELAY,
     MIDI_PROGRAM_VOLUME_RAMP_STEP,
     VOLUME_CC,
@@ -369,20 +371,42 @@ def _applyPresetPlans(presetPlans):
     if sentPlans:
         sleep(MIDI_PROGRAM_PC_SETTLE_DELAY)
 
-    # Phase 3: interleave each effect CC across the BiasFX destinations.
-    for effectName in (EFFECT_DELAY, EFFECT_REVERB, EFFECT_MOD, EFFECT_BOOST):
-        for plan in presetPlans:
-            _applyProgramEffectPhase(effectName, plan)
-    updateEffectDisplayStatus()
+    # BiasFX running as a Mac plug-in finishes loading presets noticeably later
+    # than the iPad app. Keep the established fast path for every other device,
+    # then finish the Mac plan once its longer settle window has elapsed.
+    delayedMacPlans = [
+        plan for plan in presetPlans
+        if plan["sendPC"]
+        and plan["newPC"] != 0
+        and plan["channel"] == DEV2_GUITAR_CHANNEL
+    ]
+    readyPlans = [plan for plan in presetPlans if plan not in delayedMacPlans]
 
-    # Phase 4: raise all active volumes in coordinated rounds.
-    _restoreProgramVolumes(presetPlans)
+    _applyPresetPlanEffects(readyPlans)
+    _restoreProgramVolumes(readyPlans)
+
+    if delayedMacPlans:
+        sleep(max(
+            0,
+            MIDI_BIASFX_MAC_PC_SETTLE_DELAY - MIDI_PROGRAM_PC_SETTLE_DELAY,
+        ))
+        _applyPresetPlanEffects(delayedMacPlans)
+        _restoreProgramVolumes(delayedMacPlans)
+
+    updateEffectDisplayStatus()
 
     for plan in presetPlans:
         idx = plan["idx"]
         gCurrentPCList[idx] = plan["newPC"]
         gCurrentVolumeList[idx] = plan["newVolume"]
         scheduleVolumeReassert(plan["channel"], plan["newVolume"])
+
+
+def _applyPresetPlanEffects(presetPlans):
+    # Interleave each effect CC across the destinations in this timing group.
+    for effectName in (EFFECT_DELAY, EFFECT_REVERB, EFFECT_MOD, EFFECT_BOOST):
+        for plan in presetPlans:
+            _applyProgramEffectPhase(effectName, plan)
 
 
 def _applyProgramEffectPhase(effectName, plan):

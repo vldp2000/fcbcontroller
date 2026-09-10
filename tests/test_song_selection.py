@@ -371,18 +371,20 @@ class SongSelectionTest(unittest.TestCase):
             ("PC", 2, 0, False),
             ("SLEEP", config.MIDI_PROGRAM_PC_SETTLE_DELAY),
             ("CC", 6, config.BIASFX_DELAY_TOGGLE_CC, 127),
-            ("CC", 4, config.BIASFX_DELAY_TOGGLE_CC, 127),
-            ("CC", 4, config.BIASFX_REVERB_TOGGLE_CC, 127),
             ("CC", 6, config.BIASFX_MOD_TOGGLE_CC, 127),
-            ("CC", 4, config.BIASFX_BOOST_TOGGLE_CC, 127),
             ("CC", 2, config.VOLUME_CC, 0),
             ("CC", 6, config.VOLUME_CC, 10),
-            ("CC", 4, config.VOLUME_CC, 10),
             ("CC", 1, config.VOLUME_CC, 10),
             ("CC", 6, config.VOLUME_CC, 20),
-            ("CC", 4, config.VOLUME_CC, 15),
             ("CC", 1, config.VOLUME_CC, 20),
             ("CC", 6, config.VOLUME_CC, 25),
+            ("SLEEP", config.MIDI_BIASFX_MAC_PC_SETTLE_DELAY -
+             config.MIDI_PROGRAM_PC_SETTLE_DELAY),
+            ("CC", 4, config.BIASFX_DELAY_TOGGLE_CC, 127),
+            ("CC", 4, config.BIASFX_REVERB_TOGGLE_CC, 127),
+            ("CC", 4, config.BIASFX_BOOST_TOGGLE_CC, 127),
+            ("CC", 4, config.VOLUME_CC, 10),
+            ("CC", 4, config.VOLUME_CC, 15),
         ])
         self.assertEqual(songSelection.gCurrentPCList, [10, 20, 30, 0])
         self.assertEqual(songSelection.gCurrentVolumeList, [25, 15, 20, 0])
