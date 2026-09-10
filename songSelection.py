@@ -42,7 +42,6 @@ gCurrentDelayList = [0, 0, 0, 0]
 gCurrentReverbList = [0, 0, 0, 0]
 gCurrentModList = [0, 0, 0, 0]
 gCurrentBoostList = [0, 0, 0, 0]
-gMacEffectStateByPC = {}
 gInitialisationComplete = False
 
 midiOutput.setCurrentVolumeList(gCurrentVolumeList)
@@ -430,12 +429,6 @@ def _applyProgramEffectPhase(effectName, plan):
     rawFlag = plan["songPreset"].get(sourceKey, 0)
     newFlag = _toEffectFlag(rawFlag)
     oldFlag = int(effectList[idx]) if plan["samePC"] else 0
-    oldFlag = _getRememberedMacEffectState(
-        effectName,
-        channel,
-        plan["newPC"],
-        oldFlag,
-    )
     action = "SEND" if newFlag != oldFlag else "SKIP"
 
     _debugEffectDecision(
@@ -452,7 +445,6 @@ def _applyProgramEffectPhase(effectName, plan):
     if newFlag != oldFlag:
         sendCCMessage(channel, effectCC, 127)
     effectList[idx] = newFlag
-    _rememberMacEffectState(effectName, channel, plan["newPC"], newFlag)
 
 
 def _rampProgramVolumesBeforeFinal(presetPlans):
@@ -520,8 +512,8 @@ def setPreset(program, songPreset, idx):
             if not samePC:
                 sendPCMessage(channel, newPC)
 
-            processProgramEffects(samePC, idx, channel, songPreset, newPC)
-            processProgramBoost(samePC, idx, channel, songPreset, newPC)
+            processProgramEffects(samePC, idx, channel, songPreset)
+            processProgramBoost(samePC, idx, channel, songPreset)
 
             sendCCMessage(channel, VOLUME_CC, newVolume)
 
@@ -542,7 +534,7 @@ def setPreset(program, songPreset, idx):
     return True
 
 
-def processProgramEffects(samePCFlag, idx, channel, songPreset, pc=None):
+def processProgramEffects(samePCFlag, idx, channel, songPreset):
     if not _isBiasFXEffectTarget(channel, idx):
         return
 
@@ -554,11 +546,6 @@ def processProgramEffects(samePCFlag, idx, channel, songPreset, pc=None):
         oldDelay = int(gCurrentDelayList[idx])
         oldReverb = int(gCurrentReverbList[idx])
         oldMod = int(gCurrentModList[idx])
-
-    currentPC = gCurrentPCList[idx] if pc is None else pc
-    oldDelay = _getRememberedMacEffectState(EFFECT_DELAY, channel, currentPC, oldDelay)
-    oldReverb = _getRememberedMacEffectState(EFFECT_REVERB, channel, currentPC, oldReverb)
-    oldMod = _getRememberedMacEffectState(EFFECT_MOD, channel, currentPC, oldMod)
 
     rawDelayFlag = songPreset.get('delayflag', 0)
     delayFlag = _toEffectFlag(rawDelayFlag)
@@ -591,24 +578,14 @@ def processProgramEffects(samePCFlag, idx, channel, songPreset, pc=None):
     gCurrentDelayList[idx] = delayFlag
     gCurrentReverbList[idx] = reverbFlag
     gCurrentModList[idx] = modeFlag
-    _rememberMacEffectState(EFFECT_DELAY, channel, currentPC, delayFlag)
-    _rememberMacEffectState(EFFECT_REVERB, channel, currentPC, reverbFlag)
-    _rememberMacEffectState(EFFECT_MOD, channel, currentPC, modeFlag)
     updateEffectDisplayStatus()
 
 
-def processProgramBoost(samePCFlag, idx, channel, songPreset, pc=None):
+def processProgramBoost(samePCFlag, idx, channel, songPreset):
     if not _isBiasFXEffectTarget(channel, idx):
         return
 
-    currentPC = gCurrentPCList[idx] if pc is None else pc
     oldBoost = int(gCurrentBoostList[idx]) if samePCFlag else 0
-    oldBoost = _getRememberedMacEffectState(
-        EFFECT_BOOST,
-        channel,
-        currentPC,
-        oldBoost,
-    )
     rawBoostFlag = songPreset.get('boostflag', 0)
     boostFlag = _toEffectFlag(rawBoostFlag)
     if boostFlag != oldBoost:
@@ -618,7 +595,6 @@ def processProgramBoost(samePCFlag, idx, channel, songPreset, pc=None):
         _debugEffectDecision("Boost", "SKIP", idx, channel, samePCFlag, oldBoost, boostFlag, rawBoostFlag, BIASFX_BOOST_TOGGLE_CC)
 
     gCurrentBoostList[idx] = boostFlag
-    _rememberMacEffectState(EFFECT_BOOST, channel, currentPC, boostFlag)
     updateEffectDisplayStatus()
 
 
@@ -647,12 +623,6 @@ def toggleLiveEffect(effectName):
         if int(effectList[idx]) != targetState:
             sendCCMessage(channel, effectCC, 127)
             effectList[idx] = targetState
-        _rememberMacEffectState(
-            effectName,
-            channel,
-            gCurrentPCList[idx],
-            targetState,
-        )
 
     updateEffectDisplayStatus()
     if gDisplayData:
@@ -685,24 +655,6 @@ def updateEffectDisplayStatus():
 
 def _isBiasFXEffectTarget(channel, idx):
     return (channel, idx) in BIASFX_EFFECT_TARGETS
-
-
-def _getRememberedMacEffectState(effectName, channel, pc, fallback):
-    if channel != DEV2_GUITAR_CHANNEL or int(pc) == 0:
-        return int(fallback)
-
-    presetState = gMacEffectStateByPC.get(int(pc))
-    if presetState is None:
-        return int(fallback)
-    return int(presetState.get(effectName, fallback))
-
-
-def _rememberMacEffectState(effectName, channel, pc, state):
-    if channel != DEV2_GUITAR_CHANNEL or int(pc) == 0:
-        return
-
-    presetState = gMacEffectStateByPC.setdefault(int(pc), {})
-    presetState[effectName] = int(state)
 
 
 def _toEffectFlag(value):
