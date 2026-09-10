@@ -106,11 +106,11 @@ EXPRESSION_PEDAL_2_TARGETS = (
     (DEV2_KEYBOARD_CHANNEL, DEV2_KEYBOARD_VOLUME_IDX),
 )
 
-# Live effect toggles affect BiasFX guitar apps only.
+# Effect toggles are enabled only for BiasFX on iPad. BiasFX on Mac uses
+# toggle-only MIDI assignments that can drift from the controller state.
 # Each tuple is (MIDI channel, current preset/effect state index).
 BIASFX_EFFECT_TARGETS = (
     (DEV1_GUITAR_CHANNEL, DEV1_GUITAR_VOLUME_IDX),
-    (DEV2_GUITAR_CHANNEL, DEV2_GUITAR_VOLUME_IDX),
 )
 
 # Raw maximum values measured from the FCB1010 expression pedals.

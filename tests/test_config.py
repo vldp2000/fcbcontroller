@@ -37,12 +37,11 @@ class ConfigTest(unittest.TestCase):
             ),
         )
 
-    def test_biasfx_effect_targets_are_guitar_only(self):
+    def test_biasfx_effect_targets_include_ipad_only(self):
         self.assertEqual(
             config.BIASFX_EFFECT_TARGETS,
             (
                 (config.DEV1_GUITAR_CHANNEL, config.DEV1_GUITAR_VOLUME_IDX),
-                (config.DEV2_GUITAR_CHANNEL, config.DEV2_GUITAR_VOLUME_IDX),
             ),
         )
 
