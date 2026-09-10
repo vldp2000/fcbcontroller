@@ -88,6 +88,7 @@ class SongSelectionTest(unittest.TestCase):
         songSelection.gCurrentReverbList[:] = [0, 0, 0, 0]
         songSelection.gCurrentModList[:] = [0, 0, 0, 0]
         songSelection.gCurrentBoostList[:] = [0, 0, 0, 0]
+        songSelection.gMacEffectStateByPC.clear()
         songSelection.gInitialisationComplete = False
 
     @patch.object(songSelection, "sleep", return_value=None)
@@ -769,6 +770,69 @@ class SongSelectionTest(unittest.TestCase):
         self.assertEqual(songSelection.gCurrentModList[0], 1)
 
     @patch.object(songSelection, "sendCCMessage")
+    def test_mac_returning_to_pc_uses_remembered_effect_state(self, sendCCMock):
+        plan = {
+            "idx": config.DEV2_GUITAR_VOLUME_IDX,
+            "channel": config.DEV2_GUITAR_CHANNEL,
+            "newPC": 7,
+            "samePC": False,
+            "songPreset": {
+                "delayflag": 1,
+                "reverbflag": 1,
+                "modeflag": 1,
+                "boostflag": 1,
+            },
+        }
+
+        songSelection._applyPresetPlanEffects([plan])
+        self.assertEqual(sendCCMock.call_count, 4)
+        self.assertEqual(
+            songSelection.gMacEffectStateByPC[7],
+            {"delay": 1, "reverb": 1, "mod": 1, "boost": 1},
+        )
+
+        sendCCMock.reset_mock()
+        songSelection.gCurrentDelayList[config.DEV2_GUITAR_VOLUME_IDX] = 0
+        songSelection.gCurrentReverbList[config.DEV2_GUITAR_VOLUME_IDX] = 0
+        songSelection.gCurrentModList[config.DEV2_GUITAR_VOLUME_IDX] = 0
+        songSelection.gCurrentBoostList[config.DEV2_GUITAR_VOLUME_IDX] = 0
+
+        songSelection._applyPresetPlanEffects([plan])
+
+        sendCCMock.assert_not_called()
+        self.assertEqual(songSelection.gCurrentDelayList[config.DEV2_GUITAR_VOLUME_IDX], 1)
+        self.assertEqual(songSelection.gCurrentReverbList[config.DEV2_GUITAR_VOLUME_IDX], 1)
+        self.assertEqual(songSelection.gCurrentModList[config.DEV2_GUITAR_VOLUME_IDX], 1)
+        self.assertEqual(songSelection.gCurrentBoostList[config.DEV2_GUITAR_VOLUME_IDX], 1)
+
+    @patch.object(songSelection, "sendCCMessage")
+    def test_ipad_new_pc_keeps_existing_fresh_baseline_behaviour(self, sendCCMock):
+        plan = {
+            "idx": config.DEV1_GUITAR_VOLUME_IDX,
+            "channel": config.DEV1_GUITAR_CHANNEL,
+            "newPC": 12,
+            "samePC": False,
+            "songPreset": {"delayflag": 1},
+        }
+
+        songSelection._applyPresetPlanEffects([plan])
+        songSelection._applyPresetPlanEffects([plan])
+
+        self.assertEqual(sendCCMock.call_args_list, [
+            unittest.mock.call(
+                config.DEV1_GUITAR_CHANNEL,
+                config.BIASFX_DELAY_TOGGLE_CC,
+                127,
+            ),
+            unittest.mock.call(
+                config.DEV1_GUITAR_CHANNEL,
+                config.BIASFX_DELAY_TOGGLE_CC,
+                127,
+            ),
+        ])
+        self.assertEqual(songSelection.gMacEffectStateByPC, {})
+
+    @patch.object(songSelection, "sendCCMessage")
     def test_process_program_effects_same_pc_compares_against_existing_state(self, sendCCMock):
         guitarIdx = config.DEV2_GUITAR_VOLUME_IDX
         songSelection.gCurrentDelayList[guitarIdx] = 1
@@ -805,6 +869,7 @@ class SongSelectionTest(unittest.TestCase):
     @patch.object(songSelection, "sendCCMessage")
     def test_toggle_live_delay_effect_turns_on_both_biasfx_targets_only(self, sendCCMock):
         songSelection.gCurrentDelayList[:] = [0, 0, 1, 1]
+        songSelection.gCurrentPCList[config.DEV2_GUITAR_VOLUME_IDX] = 7
 
         songSelection.toggleLiveDelayEffect()
 
@@ -816,6 +881,7 @@ class SongSelectionTest(unittest.TestCase):
             ],
         )
         self.assertEqual(songSelection.gCurrentDelayList, [1, 1, 1, 1])
+        self.assertEqual(songSelection.gMacEffectStateByPC[7]["delay"], 1)
         self.assertIn(("setEffectStatus", 1, 0, 0, 0), self.display.calls)
         self.assertIn(("drawScreen",), self.display.calls)
 
