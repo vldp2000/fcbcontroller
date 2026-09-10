@@ -10,7 +10,7 @@ import config
 
 class ConfigTest(unittest.TestCase):
     def test_program_change_uses_device_specific_settle_delays(self):
-        self.assertEqual(config.MIDI_PC_DELAY, 0.005)
+        self.assertEqual(config.MIDI_PC_DELAY, 0.020)
         self.assertEqual(config.MIDI_PROGRAM_PC_SETTLE_DELAY, 0.150)
         self.assertEqual(config.MIDI_BIASFX_MAC_PC_SETTLE_DELAY, 0.500)
 
