@@ -12,7 +12,6 @@ from config import (
     BIASFX_MOD_TOGGLE_CC,
     BIASFX_REVERB_TOGGLE_CC,
     DEV2_GUITAR_CHANNEL,
-    MIDI_BIASFX_MAC_PC_SETTLE_DELAY,
     MIDI_PROGRAM_PC_SETTLE_DELAY,
     MIDI_PROGRAM_VOLUME_RAMP_STEP,
     VOLUME_CC,
@@ -372,25 +371,7 @@ def _applyPresetPlans(presetPlans):
     if sentPlans:
         sleep(MIDI_PROGRAM_PC_SETTLE_DELAY)
 
-    # BiasFX running as a Mac plug-in finishes loading presets noticeably later
-    # than the iPad app. Keep the established fast path for every other device,
-    # then finish the Mac plan once its longer settle window has elapsed.
-    delayedMacPlans = [
-        plan for plan in presetPlans
-        if plan["sendPC"]
-        and plan["newPC"] != 0
-        and plan["channel"] == DEV2_GUITAR_CHANNEL
-    ]
-    readyPlans = [plan for plan in presetPlans if plan not in delayedMacPlans]
-
-    _applyPresetTimingGroup(readyPlans)
-
-    if delayedMacPlans:
-        sleep(max(
-            0,
-            MIDI_BIASFX_MAC_PC_SETTLE_DELAY - MIDI_PROGRAM_PC_SETTLE_DELAY,
-        ))
-        _applyPresetTimingGroup(delayedMacPlans)
+    _applyPresetTimingGroup(presetPlans)
 
     updateEffectDisplayStatus()
 

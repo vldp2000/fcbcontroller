@@ -9,10 +9,10 @@ import config
 
 
 class ConfigTest(unittest.TestCase):
-    def test_program_change_uses_device_specific_settle_delays(self):
-        self.assertEqual(config.MIDI_PC_DELAY, 0.020)
-        self.assertEqual(config.MIDI_PROGRAM_PC_SETTLE_DELAY, 0.150)
-        self.assertEqual(config.MIDI_BIASFX_MAC_PC_SETTLE_DELAY, 0.500)
+    def test_program_change_uses_short_pacing_and_one_batch_settle_delay(self):
+        self.assertEqual(config.MIDI_CC_DELAY, 0.002)
+        self.assertEqual(config.MIDI_PC_DELAY, 0.005)
+        self.assertEqual(config.MIDI_PROGRAM_PC_SETTLE_DELAY, 0.100)
 
     def test_live_device_channels_match_current_routing(self):
         self.assertEqual(config.DEV1_GUITAR_CHANNEL, 6)
