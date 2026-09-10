@@ -399,7 +399,7 @@ class SongSelectionTest(unittest.TestCase):
     @patch.object(songSelection, "sleep")
     @patch.object(songSelection, "sendPCMessage")
     @patch.object(songSelection, "sendCCMessage")
-    def test_apply_preset_plans_skips_unchanged_nonzero_pc_but_sends_zero_pc(
+    def test_apply_preset_plans_resends_every_pc_regardless_of_cached_state(
         self,
         _sendCCMock,
         sendPCMock,
@@ -408,14 +408,17 @@ class SongSelectionTest(unittest.TestCase):
     ):
         plans = [
             {"idx": 0, "channel": 6, "newPC": 10, "newVolume": 10,
-             "samePC": True, "sendPC": False, "songPreset": {}},
+             "songPreset": {}},
             {"idx": 3, "channel": 2, "newPC": 0, "newVolume": 0,
-             "samePC": True, "sendPC": True, "songPreset": {}},
+             "songPreset": {}},
         ]
 
         songSelection._applyPresetPlans(plans)
 
-        sendPCMock.assert_called_once_with(2, 0, pace=False)
+        self.assertEqual(sendPCMock.call_args_list, [
+            unittest.mock.call(6, 10, pace=True),
+            unittest.mock.call(2, 0, pace=False),
+        ])
         sleepMock.assert_called_once_with(config.MIDI_PROGRAM_PC_SETTLE_DELAY)
 
     @patch.object(songSelection.controllerSocket, "sendProgramNotificationMessage")
@@ -617,7 +620,7 @@ class SongSelectionTest(unittest.TestCase):
         self.assertEqual(songSelection.gCurrentReverbList[0], 0)
         self.assertEqual(songSelection.gCurrentModList[0], 0)
 
-    def test_set_preset_same_pc_skips_program_change_and_keeps_effects_if_unchanged(self):
+    def test_set_preset_same_pc_reloads_program_and_reapplies_enabled_effects(self):
         events = []
         songSelection.gInstrumentChannelDict = {"1": config.DEV1_GUITAR_CHANNEL}
         songSelection.gPresetDict = {"9": {"name": "Lead", "midipc": 12, "refinstrument": 1}}
@@ -646,16 +649,19 @@ class SongSelectionTest(unittest.TestCase):
             events,
             [
                 ("cc", config.DEV1_GUITAR_CHANNEL, config.VOLUME_CC, 0),
+                ("pc", config.DEV1_GUITAR_CHANNEL, 12),
+                ("cc", config.DEV1_GUITAR_CHANNEL, config.BIASFX_DELAY_TOGGLE_CC, 127),
+                ("cc", config.DEV1_GUITAR_CHANNEL, config.BIASFX_MOD_TOGGLE_CC, 127),
                 ("cc", config.DEV1_GUITAR_CHANNEL, config.VOLUME_CC, 75),
             ],
         )
         self.assertIn(
             "Preset Selected slot=0 instrument=1 channel=6 presetId=9 "
-            "preset=Lead requestedPC=12 cachedPC=12 action=SKIPPED",
+            "preset=Lead requestedPC=12 cachedPC=12 action=SENT",
             self.debugMessages,
         )
 
-    def test_set_preset_same_pc_toggles_only_changed_effects_before_restoring_volume(self):
+    def test_set_preset_same_pc_reapplies_flags_from_fresh_preset_baseline(self):
         events = []
         songSelection.gInstrumentChannelDict = {"1": config.DEV1_GUITAR_CHANNEL}
         songSelection.gPresetDict = {"9": {"name": "Lead", "midipc": 12, "refinstrument": 1}}
@@ -684,8 +690,9 @@ class SongSelectionTest(unittest.TestCase):
             events,
             [
                 ("cc", config.DEV1_GUITAR_CHANNEL, config.VOLUME_CC, 0),
-                ("cc", config.DEV1_GUITAR_CHANNEL, config.BIASFX_DELAY_TOGGLE_CC, 127),
+                ("pc", config.DEV1_GUITAR_CHANNEL, 12),
                 ("cc", config.DEV1_GUITAR_CHANNEL, config.BIASFX_REVERB_TOGGLE_CC, 127),
+                ("cc", config.DEV1_GUITAR_CHANNEL, config.BIASFX_MOD_TOGGLE_CC, 127),
                 ("cc", config.DEV1_GUITAR_CHANNEL, config.VOLUME_CC, 75),
             ],
         )

@@ -328,15 +328,12 @@ def _preparePresetPlan(program, songPreset, idx):
     channel = int(gInstrumentChannelDict[str(instrumentId)])
     newPC = int(preset['midipc'])
     oldPC = gCurrentPCList[idx]
-    samePC = newPC == oldPC
     newVolume = 0 if newPC == 0 else max(0, min(127, int(songPreset['volume'])))
-    sendPC = newPC == 0 or not samePC
-    action = "SENT" if sendPC else "SKIPPED"
 
     _debug(
         f"Preset Selected slot={idx} instrument={instrumentId} "
         f"channel={channel} presetId={presetId} preset={preset['name']} "
-        f"requestedPC={newPC} cachedPC={oldPC} action={action}")
+        f"requestedPC={newPC} cachedPC={oldPC} action=SENT")
     if newPC != 0:
         _debug(f"Preset Volume {newVolume}")
 
@@ -348,8 +345,6 @@ def _preparePresetPlan(program, songPreset, idx):
         "channel": channel,
         "newPC": newPC,
         "newVolume": newVolume,
-        "samePC": samePC,
-        "sendPC": sendPC,
         "songPreset": songPreset,
     }
 
@@ -361,7 +356,7 @@ def _applyPresetPlans(presetPlans):
 
     # Phase 2: send one PC per destination with only the short transport pacing
     # delay, then let every destination settle in parallel before sending CCs.
-    sentPlans = [plan for plan in presetPlans if plan["sendPC"]]
+    sentPlans = presetPlans
     for index, plan in enumerate(sentPlans):
         sendPCMessage(
             plan["channel"],
@@ -376,8 +371,7 @@ def _applyPresetPlans(presetPlans):
     # then finish the Mac plan once its longer settle window has elapsed.
     delayedMacPlans = [
         plan for plan in presetPlans
-        if plan["sendPC"]
-        and plan["newPC"] != 0
+        if plan["newPC"] != 0
         and plan["channel"] == DEV2_GUITAR_CHANNEL
     ]
     readyPlans = [plan for plan in presetPlans if plan not in delayedMacPlans]
@@ -430,7 +424,7 @@ def _applyProgramEffectPhase(effectName, plan):
     }[effectName]
     rawFlag = plan["songPreset"].get(sourceKey, 0)
     newFlag = _toEffectFlag(rawFlag)
-    oldFlag = int(effectList[idx]) if plan["samePC"] else 0
+    oldFlag = 0
     action = "SEND" if newFlag != oldFlag else "SKIP"
 
     _debugEffectDecision(
@@ -438,7 +432,7 @@ def _applyProgramEffectPhase(effectName, plan):
         action,
         idx,
         channel,
-        plan["samePC"],
+        False,
         oldFlag,
         newFlag,
         rawFlag,
@@ -499,20 +493,16 @@ def setPreset(program, songPreset, idx):
             if newVolume < 0:
                 newVolume = 0
 
-            samePC = newPC == oldPC
-            action = "SKIPPED" if samePC else "SENT"
             _debug(
                 f"Preset Selected slot={idx} instrument={songPreset['refinstrument']} "
                 f"channel={channel} presetId={id} preset={preset['name']} "
-                f"requestedPC={newPC} cachedPC={oldPC} action={action}")
+                f"requestedPC={newPC} cachedPC={oldPC} action=SENT")
 
             sendCCMessage(channel, VOLUME_CC, 0)
+            sendPCMessage(channel, newPC)
 
-            if not samePC:
-                sendPCMessage(channel, newPC)
-
-            processProgramEffects(samePC, idx, channel, songPreset)
-            processProgramBoost(samePC, idx, channel, songPreset)
+            processProgramEffects(False, idx, channel, songPreset)
+            processProgramBoost(False, idx, channel, songPreset)
 
             sendCCMessage(channel, VOLUME_CC, newVolume)
 
